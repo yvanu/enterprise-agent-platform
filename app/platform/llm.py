@@ -22,22 +22,24 @@ class OpenAICompatibleLLM:
     def __init__(self, settings: Settings):
         self.settings = settings
 
-    def chat(self, messages: list[dict[str, str]]) -> str:
-        if not self.settings.llm_model:
-            raise LLMNotConfiguredError("请配置 LLM_MODEL")
-
-        headers = (
+    def _headers(self) -> dict[str, str]:
+        return (
             {"Authorization": f"Bearer {self.settings.llm_api_key}"}
             if self.settings.llm_api_key
             else {}
         )
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        if not self.settings.llm_model:
+            raise LLMNotConfiguredError("请配置 LLM_MODEL")
+
         with httpx.Client(
             base_url=self.settings.llm_base_url.rstrip("/") + "/",
             timeout=self.settings.llm_timeout_seconds,
         ) as client:
             response = client.post(
                 "chat/completions",
-                headers=headers,
+                headers=self._headers(),
                 json={
                     "model": self.settings.llm_model,
                     "messages": messages,
@@ -71,3 +73,21 @@ class OpenAICompatibleLLM:
         if not isinstance(value, dict):
             raise LLMResponseError("LLM 返回值必须是 JSON object")
         return value
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        if not self.settings.embedding_model:
+            raise LLMNotConfiguredError("请配置 EMBEDDING_MODEL")
+        with httpx.Client(
+            base_url=self.settings.llm_base_url.rstrip("/") + "/",
+            timeout=self.settings.llm_timeout_seconds,
+        ) as client:
+            response = client.post(
+                "embeddings",
+                headers=self._headers(),
+                json={"model": self.settings.embedding_model, "input": texts},
+            )
+            response.raise_for_status()
+        try:
+            return [item["embedding"] for item in response.json()["data"]]
+        except (KeyError, TypeError) as exc:
+            raise LLMResponseError("Embedding 返回格式不正确") from exc

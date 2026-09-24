@@ -15,9 +15,12 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.openai.com/v1"
     llm_api_key: str = ""
     llm_model: str = ""
+    embedding_model: str = ""
     llm_timeout_seconds: int = 60
 
     agent_max_attempts: int = 3
+    knowledge_db_path: str = "./data/knowledge.db"
+    knowledge_top_k: int = 5
 
     model_config = SettingsConfigDict(
         env_file=".env",
