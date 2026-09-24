@@ -14,13 +14,15 @@
 - 最大结果集限制
 - SQL 执行失败反馈给模型并自动纠错
 - 查询结果总结
+- 数值结果自动生成轻量图表
+- 自动生成可下载 Markdown 分析报告
 
 ### Knowledge Agent
 企业知识检索 → RAG → 带来源回答。
 
 已实现第一版：
-- 文档内容写入
-- 文档自动分块
+- 文本直接写入以及 txt / md / csv / json / PDF / DOCX 文件上传
+- PDF / DOCX 文本提取与文档自动分块
 - OpenAI-compatible Embedding
 - SQLite 存储向量
 - 余弦相似度检索
@@ -102,6 +104,7 @@ EMBEDDING_MODEL=
 
 ### Knowledge
 - `POST /api/v1/knowledge/documents`
+- `POST /api/v1/knowledge/documents/upload`
 - `POST /api/v1/knowledge/ask`
 
 ### Ops

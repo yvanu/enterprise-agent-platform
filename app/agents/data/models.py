@@ -18,6 +18,15 @@ class QueryResult(BaseModel):
     truncated: bool = False
 
 
+class ChartSpec(BaseModel):
+    type: str = "bar"
+    title: str
+    labels: list[str]
+    values: list[float]
+    x_column: str
+    y_column: str
+
+
 class AgentAnswer(BaseModel):
     question: str
     answer: str
@@ -25,6 +34,8 @@ class AgentAnswer(BaseModel):
     sql: str
     attempts: list[SqlAttempt]
     result: QueryResult
+    chart: ChartSpec | None = None
+    report_markdown: str = ""
     trace: list[TraceStep] = Field(default_factory=list)
 
 

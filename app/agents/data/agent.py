@@ -1,11 +1,55 @@
 import json
 from typing import Any
 
-from app.agents.data.models import AgentAnswer, SqlAttempt
+from app.agents.data.models import AgentAnswer, ChartSpec, QueryResult, SqlAttempt
 from app.db.engine import Database
 from app.db.introspection import describe_schema, schema_to_prompt
 from app.platform.llm import LLMResponseError, OpenAICompatibleLLM
 from app.platform.models import TraceStep
+
+
+def _chart(result: QueryResult) -> ChartSpec | None:
+    if not result.rows or len(result.columns) < 2:
+        return None
+
+    x_column = result.columns[0]
+    numeric = next(
+        (
+            column
+            for column in result.columns[1:]
+            if all(
+                row.get(column) is None or isinstance(row.get(column), (int, float))
+                for row in result.rows
+            )
+        ),
+        None,
+    )
+    if not numeric:
+        return None
+
+    rows = [row for row in result.rows[:20] if isinstance(row.get(numeric), (int, float))]
+    if not rows:
+        return None
+    return ChartSpec(
+        title=f"{numeric} by {x_column}",
+        labels=[str(row.get(x_column, "")) for row in rows],
+        values=[float(row[numeric]) for row in rows],
+        x_column=x_column,
+        y_column=numeric,
+    )
+
+
+def _report(question: str, answer: str, insights: list[str], sql: str, result: QueryResult) -> str:
+    lines = [f"# 数据分析报告", "", f"## 问题", question, "", "## 结论", answer]
+    if insights:
+        lines += ["", "## 关键发现", *[f"- {item}" for item in insights]]
+    lines += ["", "## SQL", "```sql", sql, "```"]
+    if result.rows:
+        columns = result.columns
+        lines += ["", "## 查询结果", "| " + " | ".join(columns) + " |", "| " + " | ".join(["---"] * len(columns)) + " |"]
+        for row in result.rows[:20]:
+            lines.append("| " + " | ".join(str(row.get(c, "")).replace("|", "\\|") for c in columns) + " |")
+    return "\n".join(lines)
 
 
 class DataAgent:
@@ -120,6 +164,9 @@ class DataAgent:
                 result=result.model_dump(mode="json"),
             )
             trace.append(TraceStep(kind="llm", name="summarize"))
+            chart = _chart(result)
+            report = _report(question, summary["answer"], summary["insights"], sql, result)
+            trace.append(TraceStep(kind="tool", name="presentation", detail="chart + markdown report"))
             return AgentAnswer(
                 question=question,
                 answer=summary["answer"],
@@ -127,6 +174,8 @@ class DataAgent:
                 sql=sql,
                 attempts=attempts,
                 result=result,
+                chart=chart,
+                report_markdown=report,
                 trace=trace,
             )
 

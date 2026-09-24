@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     agent_max_attempts: int = 3
     knowledge_db_path: str = "./data/knowledge.db"
     knowledge_top_k: int = 5
+    knowledge_max_upload_bytes: int = 10 * 1024 * 1024
 
     ops_log_files: str = ""
     prometheus_url: str = ""
