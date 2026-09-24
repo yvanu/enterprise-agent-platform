@@ -1,8 +1,37 @@
 # Enterprise Agent Platform
 
-面向企业场景的 Agent 平台。第一阶段实现 **智能数据分析 Agent**：自然语言理解、Schema 感知、SQL 生成、安全校验、执行纠错和结果总结。
+面向企业场景的多 Agent 平台。项目包含三个业务 Agent，共享同一套 LLM Runtime、配置、数据库能力和 API 服务。
 
-## 当前里程碑
+## Agent
+
+- **Data Agent**：自然语言 → Schema 感知 → SQL 生成 → 安全校验 → 自动纠错 → 数据结论。已实现第一版。
+- **Knowledge Agent**：企业知识检索、RAG、文档引用、业务流程工具调用。下一阶段实现。
+- **Ops Agent**：日志、指标、数据库和运行环境联合诊断，高风险操作人工确认。后续实现。
+
+## 架构
+
+```text
+app/
+├── agents/
+│   ├── data/          # Data Agent
+│   ├── knowledge/     # Knowledge Agent
+│   └── ops/           # Ops Agent
+├── platform/
+│   └── llm.py         # 三个 Agent 共用的 LLM Runtime
+├── api/
+│   └── data.py        # 按业务 Agent 拆分 API
+├── db/
+│   ├── engine.py      # 数据库访问
+│   ├── introspection.py
+│   └── sql_guard.py   # SQL 安全边界
+├── core/
+│   └── config.py
+└── main.py
+```
+
+当前没有提前增加 Supervisor。只有真正出现跨 Agent 协同需求时再增加调度层。
+
+## 当前 Data Agent 能力
 
 - FastAPI API 服务
 - PostgreSQL / Kingbase / SQLite 可复用数据库层
@@ -10,8 +39,9 @@
 - SQL 只读安全网关
 - SELECT/CTE 白名单、危险关键字拦截、最大返回行数
 - OpenAI-compatible LLM 客户端
-- Data Agent 多轮 SQL 生成/执行/纠错
-- SQLite 演示数据，开箱即用
+- SQL 生成、执行失败反馈和自动纠错
+- 查询结果总结
+- SQLite 演示数据
 - 单元测试
 
 ## 快速启动
@@ -32,11 +62,9 @@ uvicorn app.main:app --reload
 
 - `GET /health`
 - `GET /api/v1/data/schema`
-- `POST /api/v1/data/sql`：安全执行只读 SQL
-- `POST /api/v1/data/ask`：自然语言数据分析
+- `POST /api/v1/data/sql`
+- `POST /api/v1/data/ask`
 
-## 设计目标
+## 安全边界
 
-这不是单纯 Text-to-SQL。Agent 会根据数据库返回的错误自动把执行结果反馈给模型，重新生成 SQL；所有 SQL 必须先经过独立安全网关，模型本身不能绕过权限边界。
-
-生产数据库请使用独立只读账号；SQL 解析器是第二道防线，不替代数据库权限。
+模型不能直接执行任意 SQL。查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号，解析器只作为第二道防线。

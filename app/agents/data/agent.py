@@ -1,0 +1,129 @@
+import json
+from typing import Any
+
+from app.agents.data.models import AgentAnswer, SqlAttempt
+from app.db.engine import Database
+from app.db.introspection import describe_schema, schema_to_prompt
+from app.platform.llm import LLMResponseError, OpenAICompatibleLLM
+
+
+class DataAgent:
+    def __init__(self, db: Database, llm: OpenAICompatibleLLM):
+        self.db = db
+        self.llm = llm
+
+    def _generate_sql(
+        self,
+        *,
+        question: str,
+        schema: str,
+        previous_error: str | None = None,
+        previous_sql: str | None = None,
+    ) -> dict[str, str]:
+        retry = ""
+        if previous_error:
+            retry = (
+                f"\n上一次 SQL：{previous_sql}\n"
+                f"数据库/安全网关错误：{previous_error}\n"
+                "请分析错误并修正 SQL。"
+            )
+
+        data = self.llm.chat_json(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "你是企业数据分析 Agent。只生成只读 SELECT/CTE SQL。"
+                        "禁止写操作、DDL、文件函数、系统管理函数。"
+                        "只能使用给定 Schema 中真实存在的表和字段。"
+                        "返回纯 JSON："
+                        '{"sql":"...","plan_summary":"一句话说明查询思路"}。'
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Schema:\n{schema}\n\n问题：{question}{retry}",
+                },
+            ]
+        )
+        sql = str(data.get("sql", "")).strip()
+        if not sql:
+            raise LLMResponseError("LLM 没有生成 SQL")
+        return {"sql": sql, "plan_summary": str(data.get("plan_summary", "")).strip()}
+
+    def _summarize(
+        self,
+        *,
+        question: str,
+        sql: str,
+        result: dict[str, Any],
+    ) -> dict[str, Any]:
+        data = self.llm.chat_json(
+            [
+                {
+                    "role": "system",
+                    "content": (
+                        "你是企业数据分析师。根据查询结果回答问题，不得编造结果中不存在的数据。"
+                        "返回纯 JSON："
+                        '{"answer":"简洁结论","insights":["关键发现1","关键发现2"]}。'
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": (
+                        f"问题：{question}\nSQL：{sql}\n"
+                        f"查询结果：{json.dumps(result, ensure_ascii=False, default=str)}"
+                    ),
+                },
+            ]
+        )
+        return {
+            "answer": str(data.get("answer", "")).strip() or "查询完成。",
+            "insights": [str(x) for x in data.get("insights", []) if str(x).strip()],
+        }
+
+    def ask(self, question: str) -> AgentAnswer:
+        schema = schema_to_prompt(
+            describe_schema(self.db.engine, self.db.settings.database_schema)
+        )
+        attempts: list[SqlAttempt] = []
+        previous_error = None
+        previous_sql = None
+
+        for _ in range(self.db.settings.agent_max_attempts):
+            generated = self._generate_sql(
+                question=question,
+                schema=schema,
+                previous_error=previous_error,
+                previous_sql=previous_sql,
+            )
+            sql = generated["sql"]
+            attempt = SqlAttempt(sql=sql, plan_summary=generated["plan_summary"])
+            attempts.append(attempt)
+
+            try:
+                result = self.db.execute_readonly(sql)
+            except Exception as exc:
+                previous_sql = sql
+                previous_error = str(exc)
+                attempt.error = previous_error
+                continue
+
+            summary = self._summarize(
+                question=question,
+                sql=sql,
+                result=result.model_dump(mode="json"),
+            )
+            return AgentAnswer(
+                question=question,
+                answer=summary["answer"],
+                insights=summary["insights"],
+                sql=sql,
+                attempts=attempts,
+                result=result,
+            )
+
+        raise RuntimeError(
+            f"Agent 连续 {self.db.settings.agent_max_attempts} 次未能生成可执行 SQL："
+            f"{previous_error or 'unknown error'}"
+        )

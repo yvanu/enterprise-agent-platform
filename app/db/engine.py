@@ -4,8 +4,8 @@ from typing import Any
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
-from app.agent.models import QueryResult
-from app.agent.sql_guard import guard_sql
+from app.agents.data.models import QueryResult
+from app.db.sql_guard import guard_sql
 from app.core.config import Settings
 
 

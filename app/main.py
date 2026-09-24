@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 
-from app.api.routes import db, router
+from app.api.data import db, router
 from app.core.config import get_settings
 from app.db.demo import initialize_demo_database
 

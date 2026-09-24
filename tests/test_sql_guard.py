@@ -1,6 +1,6 @@
 import pytest
 
-from app.agent.sql_guard import UnsafeSqlError, guard_sql
+from app.db.sql_guard import UnsafeSqlError, guard_sql
 
 
 def test_guard_allows_select_and_adds_limit():
