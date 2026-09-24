@@ -40,7 +40,7 @@
 - 只读系统快照
 - 基于快照的故障分析
 
-当前没有任何重启、Shell 写操作或自动修复能力。后续接入日志、Prometheus、Docker/Kubernetes 时再增加 Tool 权限和人工审批。
+已支持通过配置的只读日志文件和 Prometheus API 参与诊断；日志路径只能由服务端配置，不能由请求指定。当前仍没有重启、Shell 写操作或自动修复能力。Docker/Kubernetes 写操作后续再增加 Tool 权限和人工审批。
 
 ## 架构
 
@@ -106,10 +106,12 @@ EMBEDDING_MODEL=
 
 ### Ops
 - `GET /api/v1/ops/snapshot`
+- `GET /api/v1/ops/logs?lines=80`
+- `POST /api/v1/ops/prometheus/query`
 - `POST /api/v1/ops/diagnose`
 
 ## 安全边界
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-Ops Agent 当前只暴露只读系统信息，不提供危险执行工具。需要写操作时再引入明确的 Tool 风险等级和 Human-in-the-loop。
+Ops Agent 当前只暴露只读系统信息、服务端白名单日志和只读 Prometheus 查询，不提供危险执行工具。需要写操作时再引入明确的 Tool 风险等级和 Human-in-the-loop。

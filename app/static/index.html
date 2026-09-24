@@ -99,16 +99,30 @@ ORDER BY total DESC</textarea>
       <div class="metric-grid" id="metrics" style="margin-top:14px"><div class="muted">加载中...</div></div>
     </div>
     <div class="grid">
-      <div class="card">
-        <h3>故障诊断</h3>
-        <textarea id="opsQuestion">当前服务器资源状态是否存在明显异常？还需要检查哪些信息？</textarea>
-        <div class="actions"><button id="opsAsk">开始诊断</button></div>
-        <p class="muted">当前 Ops Agent 只读取系统状态，不执行重启、修改配置等写操作。</p>
-        <pre id="opsAnswer">等待执行...</pre>
+      <div>
+        <div class="card">
+          <h3>故障诊断</h3>
+          <textarea id="opsQuestion">当前服务器资源状态是否存在明显异常？结合日志和监控数据分析，并说明还需要检查哪些信息。</textarea>
+          <div class="actions"><button id="opsAsk">开始诊断</button></div>
+          <p class="muted">只读取系统、配置日志和 Prometheus，不执行重启、修改配置等写操作。</p>
+          <pre id="opsAnswer">等待执行...</pre>
+        </div>
+        <div class="card">
+          <div class="actions" style="justify-content:space-between;margin-top:0"><h3 style="margin:0">配置日志</h3><button class="secondary" id="refreshLogs">读取日志</button></div>
+          <pre id="opsLogs">未读取</pre>
+        </div>
       </div>
-      <div class="card">
-        <h3>执行轨迹</h3>
-        <div id="opsTrace" class="muted">暂无</div>
+      <div>
+        <div class="card">
+          <h3>执行轨迹</h3>
+          <div id="opsTrace" class="muted">暂无</div>
+        </div>
+        <div class="card">
+          <h3>Prometheus</h3>
+          <input id="promQuery" value="up" placeholder="PromQL">
+          <div class="actions"><button class="secondary" id="runProm">执行只读查询</button></div>
+          <pre id="promResult">未查询</pre>
+        </div>
       </div>
     </div>
   </section>
@@ -153,6 +167,13 @@ async function loadOps(){
     ].map(x=>`<div class="metric"><span class="muted">${esc(x[0])}</span><b>${esc(x[1])}</b></div>`).join("");
   }catch(e){$("metrics").textContent=e.message}
 }
+async function loadLogs(){
+  $("opsLogs").textContent="读取中...";
+  try{
+    const logs=await api("/api/v1/ops/logs?lines=80");
+    $("opsLogs").textContent=logs.length?logs.map(x=>"== "+x.path+" ==\n"+x.lines.join("\n")).join("\n\n"):"未配置 OPS_LOG_FILES";
+  }catch(e){$("opsLogs").textContent=e.message}
+}
 
 document.querySelectorAll(".tab").forEach(button=>button.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -194,11 +215,21 @@ $("knowledgeAsk").onclick=async()=>{
   }catch(e){$("knowledgeAnswer").textContent=e.message}
 };
 $("refreshOps").onclick=loadOps;
+$("refreshLogs").onclick=loadLogs;
+$("runProm").onclick=async()=>{
+  $("promResult").textContent="查询中...";
+  try{
+    const d=await post("/api/v1/ops/prometheus/query",{query:$("promQuery").value});
+    $("promResult").textContent=JSON.stringify(d.result,null,2);
+  }catch(e){$("promResult").textContent=e.message}
+};
 $("opsAsk").onclick=async()=>{
   $("opsAnswer").textContent="诊断中...";
   try{
     const d=await post("/api/v1/ops/diagnose",{question:$("opsQuestion").value});
     $("opsAnswer").textContent=d.answer;renderTrace("opsTrace",d.trace);loadOps();
+    if(d.logs?.length)$("opsLogs").textContent=d.logs.map(x=>"== "+x.path+" ==\n"+x.lines.join("\n")).join("\n\n");
+    if(d.prometheus)$("promResult").textContent=JSON.stringify(d.prometheus.result,null,2);
   }catch(e){$("opsAnswer").textContent=e.message}
 };
 

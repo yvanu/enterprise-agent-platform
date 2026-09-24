@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     knowledge_db_path: str = "./data/knowledge.db"
     knowledge_top_k: int = 5
 
+    ops_log_files: str = ""
+    prometheus_url: str = ""
+    ops_http_timeout_seconds: int = 5
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

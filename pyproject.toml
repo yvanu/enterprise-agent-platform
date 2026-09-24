@@ -1,7 +1,7 @@
 [project]
 name = "enterprise-agent-platform"
 version = "0.1.0"
-description = "Enterprise-grade data analysis agent platform"
+description = "Enterprise multi-agent platform for data, knowledge, and operations"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115,<1",
