@@ -2,6 +2,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.platform.models import TraceStep
+
 
 class SqlAttempt(BaseModel):
     sql: str
@@ -23,6 +25,7 @@ class AgentAnswer(BaseModel):
     sql: str
     attempts: list[SqlAttempt]
     result: QueryResult
+    trace: list[TraceStep] = Field(default_factory=list)
 
 
 class SqlRequest(BaseModel):

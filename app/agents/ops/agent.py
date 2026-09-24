@@ -5,6 +5,7 @@ import shutil
 
 from app.agents.ops.models import OpsAnswer, OpsSnapshot
 from app.platform.llm import OpenAICompatibleLLM
+from app.platform.models import TraceStep
 
 
 def _memory() -> dict[str, int]:
@@ -41,6 +42,7 @@ class OpsAgent:
 
     def diagnose(self, question: str) -> OpsAnswer:
         snapshot = self.snapshot()
+        trace = [TraceStep(kind="tool", name="system_snapshot")]
         answer = self.llm.chat(
             [
                 {
@@ -60,4 +62,5 @@ class OpsAgent:
                 },
             ]
         )
-        return OpsAnswer(question=question, answer=answer, snapshot=snapshot)
+        trace.append(TraceStep(kind="llm", name="diagnose"))
+        return OpsAnswer(question=question, answer=answer, snapshot=snapshot, trace=trace)

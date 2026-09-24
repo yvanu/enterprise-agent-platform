@@ -3,93 +3,209 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Enterprise Data Agent</title>
+  <title>Enterprise Agent Platform</title>
   <style>
     :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#182230;background:#f6f8fb}
-    *{box-sizing:border-box}body{margin:0}.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 60px}
-    h1{margin:0;font-size:28px}p{color:#667085}.grid{display:grid;grid-template-columns:1.4fr .8fr;gap:20px;margin-top:24px}
-    .card{background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:18px;box-shadow:0 1px 2px #1018280d}
-    textarea{width:100%;min-height:110px;border:1px solid #d0d5dd;border-radius:10px;padding:12px;font:inherit;resize:vertical}
-    button{border:0;border-radius:9px;padding:10px 16px;font-weight:600;cursor:pointer;background:#1570ef;color:#fff}
-    button.secondary{background:#fff;color:#344054;border:1px solid #d0d5dd}.actions{display:flex;gap:10px;margin-top:12px}
-    pre{background:#101828;color:#e4e7ec;border-radius:10px;padding:14px;overflow:auto;white-space:pre-wrap;min-height:120px}
-    table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px;border-bottom:1px solid #eaecf0}th{color:#475467}
-    .muted{font-size:13px;color:#98a2b3}.status{display:inline-block;padding:3px 8px;border-radius:999px;background:#ecfdf3;color:#027a48;font-size:12px}
-    @media(max-width:800px){.grid{grid-template-columns:1fr}}
+    *{box-sizing:border-box}body{margin:0}.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+    h1{margin:6px 0;font-size:30px}h2,h3,h4{margin-top:0}p{color:#667085}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+    .status{display:inline-block;padding:4px 9px;border-radius:999px;background:#ecfdf3;color:#027a48;font-size:12px;font-weight:700}
+    .tabs{display:flex;gap:8px;margin:24px 0}.tab{background:#fff;color:#475467;border:1px solid #d0d5dd}.tab.active{background:#1570ef;color:#fff;border-color:#1570ef}
+    button{border:0;border-radius:9px;padding:10px 15px;font-weight:650;cursor:pointer;background:#1570ef;color:#fff}button.secondary{background:#fff;color:#344054;border:1px solid #d0d5dd}
+    .panel{display:none}.panel.active{display:block}.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.card{background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:18px;box-shadow:0 1px 2px #1018280d;margin-bottom:18px}
+    textarea,input{width:100%;border:1px solid #d0d5dd;border-radius:9px;padding:11px;font:inherit;background:#fff}textarea{min-height:105px;resize:vertical}.actions{display:flex;gap:10px;margin-top:12px;align-items:center}
+    pre{background:#101828;color:#e4e7ec;border-radius:10px;padding:14px;overflow:auto;white-space:pre-wrap;min-height:90px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px;border-bottom:1px solid #eaecf0}th{color:#475467}
+    .muted{font-size:13px;color:#98a2b3}.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:5px 9px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:12px}
+    .trace{display:grid;gap:8px}.trace-item{display:grid;grid-template-columns:82px 150px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #f2f4f7;font-size:13px}.trace-item:last-child{border:0}.ok{color:#027a48}.error{color:#b42318}
+    .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric{background:#f8fafc;border:1px solid #eaecf0;border-radius:10px;padding:12px}.metric b{display:block;font-size:20px;margin-top:4px}
+    .source{padding:10px 0;border-bottom:1px solid #eaecf0}.source:last-child{border:0}
+    @media(max-width:800px){.grid,.metric-grid{grid-template-columns:1fr}.top{display:block}.trace-item{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
 <div class="wrap">
-  <div>
-    <span class="status" id="health">checking</span>
-    <h1>企业智能数据分析 Agent</h1>
-    <p>自然语言 → Schema 感知 → 安全 SQL → 自动纠错 → 分析结论</p>
-  </div>
+  <header class="top">
+    <div>
+      <span class="status" id="health">checking</span>
+      <h1>Enterprise Agent Platform</h1>
+      <p>Data · Knowledge · Ops，三个业务 Agent 共用一套 LLM Runtime。</p>
+    </div>
+    <div class="chips"><span class="chip">FastAPI</span><span class="chip">RAG</span><span class="chip">SQL Guard</span><span class="chip">Trace</span></div>
+  </header>
 
-  <div class="grid">
-    <section class="card">
-      <h3>自然语言分析</h3>
-      <textarea id="question">统计每类数据的数量，并指出数量最多的类别。</textarea>
-      <div class="actions"><button id="ask">开始分析</button></div>
-      <p class="muted">需要在 .env 中配置 LLM_API_KEY 和 LLM_MODEL。</p>
-      <h4>结果</h4>
-      <pre id="answer">等待执行...</pre>
-    </section>
+  <nav class="tabs">
+    <button class="tab active" data-tab="data">Data Agent</button>
+    <button class="tab" data-tab="knowledge">Knowledge Agent</button>
+    <button class="tab" data-tab="ops">Ops Agent</button>
+  </nav>
 
-    <section class="card">
-      <h3>数据库 Schema</h3>
-      <div id="schema">加载中...</div>
-    </section>
-
-    <section class="card">
-      <h3>安全 SQL 调试</h3>
-      <textarea id="sql">SELECT main_type, COUNT(*) AS total
+  <section class="panel active" id="panel-data">
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h3>自然语言数据分析</h3>
+          <textarea id="dataQuestion">统计每类数据的数量，并指出数量最多的类别。</textarea>
+          <div class="actions"><button id="dataAsk">开始分析</button></div>
+          <p class="muted">自然语言分析需要配置 LLM_MODEL。</p>
+          <pre id="dataAnswer">等待执行...</pre>
+          <div id="dataTrace"></div>
+        </div>
+        <div class="card">
+          <h3>安全 SQL 调试</h3>
+          <textarea id="sql">SELECT main_type, COUNT(*) AS total
 FROM data_assets
 GROUP BY main_type
 ORDER BY total DESC</textarea>
-      <div class="actions"><button class="secondary" id="runSql">执行只读 SQL</button></div>
-    </section>
+          <div class="actions"><button class="secondary" id="runSql">执行只读 SQL</button></div>
+          <div id="table" style="margin-top:12px">等待执行...</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>数据库 Schema</h3>
+        <div id="schema">加载中...</div>
+      </div>
+    </div>
+  </section>
 
-    <section class="card">
-      <h3>查询结果</h3>
-      <div id="table">等待执行...</div>
-    </section>
-  </div>
+  <section class="panel" id="panel-knowledge">
+    <div class="grid">
+      <div>
+        <div class="card">
+          <h3>加入知识</h3>
+          <input id="docTitle" placeholder="文档标题">
+          <div style="height:10px"></div>
+          <input id="docFile" type="file" accept=".txt,.md,.csv,.json">
+          <p class="muted">文本类文件会在浏览器读取后提交；也可以直接粘贴内容。</p>
+          <textarea id="docContent" placeholder="粘贴文档内容"></textarea>
+          <div class="actions"><button id="addDoc">写入知识库</button><span class="muted" id="docStatus"></span></div>
+        </div>
+        <div class="card">
+          <h3>知识问答</h3>
+          <textarea id="knowledgeQuestion">雷达资料验收时需要检查什么？</textarea>
+          <div class="actions"><button id="knowledgeAsk">检索并回答</button></div>
+          <pre id="knowledgeAnswer">等待执行...</pre>
+          <div id="knowledgeTrace"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>检索来源</h3>
+        <div id="sources" class="muted">暂无</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="panel-ops">
+    <div class="card">
+      <div class="actions" style="justify-content:space-between;margin-top:0"><h3 style="margin:0">系统快照</h3><button class="secondary" id="refreshOps">刷新</button></div>
+      <div class="metric-grid" id="metrics" style="margin-top:14px"><div class="muted">加载中...</div></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>故障诊断</h3>
+        <textarea id="opsQuestion">当前服务器资源状态是否存在明显异常？还需要检查哪些信息？</textarea>
+        <div class="actions"><button id="opsAsk">开始诊断</button></div>
+        <p class="muted">当前 Ops Agent 只读取系统状态，不执行重启、修改配置等写操作。</p>
+        <pre id="opsAnswer">等待执行...</pre>
+      </div>
+      <div class="card">
+        <h3>执行轨迹</h3>
+        <div id="opsTrace" class="muted">暂无</div>
+      </div>
+    </div>
+  </section>
 </div>
+
 <script>
 const $=id=>document.getElementById(id);
-async function json(url,options){
+async function api(url,options){
   const r=await fetch(url,options), data=await r.json();
   if(!r.ok) throw new Error(data.detail||JSON.stringify(data));
   return data;
 }
+const post=(url,body)=>api(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const bytes=n=>n==null?"-":n>1073741824?(n/1073741824).toFixed(1)+" GB":n>1048576?(n/1048576).toFixed(1)+" MB":Math.round(n/1024)+" KB";
+
+function renderTrace(id,trace=[]){
+  $(id).innerHTML=trace.length?`<h4>Agent Trace</h4><div class="trace">${trace.map(x=>`<div class="trace-item"><span class="${x.status==="error"?"error":"ok"}">${esc(x.kind)}</span><b>${esc(x.name)}</b><span>${esc(x.detail)}</span></div>`).join("")}</div>`:"";
+}
 function renderTable(data){
   if(!data.rows.length){$("table").textContent="无数据";return}
-  const head=data.columns.map(x=>`<th>${x}</th>`).join("");
-  const rows=data.rows.map(r=>`<tr>${data.columns.map(c=>`<td>${r[c]??""}</td>`).join("")}</tr>`).join("");
+  const head=data.columns.map(x=>`<th>${esc(x)}</th>`).join("");
+  const rows=data.rows.map(r=>`<tr>${data.columns.map(c=>`<td>${esc(r[c])}</td>`).join("")}</tr>`).join("");
   $("table").innerHTML=`<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table><p class="muted">${data.row_count} 行${data.truncated?"（已截断）":""}</p>`;
 }
-async function load(){
-  try{$("health").textContent=(await json("/health")).status}catch{$("health").textContent="offline"}
+async function loadSchema(){
   try{
-    const s=await json("/api/v1/data/schema");
-    $("schema").innerHTML=s.tables.map(t=>`<p><b>${t.name}</b><br><span class="muted">${t.columns.map(c=>c.name+" : "+c.type).join("<br>")}</span></p>`).join("");
+    const s=await api("/api/v1/data/schema");
+    $("schema").innerHTML=s.tables.map(t=>`<p><b>${esc(t.name)}</b><br><span class="muted">${t.columns.map(c=>esc(c.name)+" : "+esc(c.type)).join("<br>")}</span></p>`).join("");
   }catch(e){$("schema").textContent=e.message}
 }
+async function loadOps(){
+  try{
+    const d=await api("/api/v1/ops/snapshot"), m=d.memory||{}, disk=d.disk||{};
+    $("metrics").innerHTML=[
+      ["CPU",d.cpu_count??"-"],
+      ["Load",d.load_average?d.load_average.map(x=>x.toFixed(2)).join(" / "):"-"],
+      ["可用内存",bytes(m.MemAvailable)],
+      ["总内存",bytes(m.MemTotal)],
+      ["磁盘可用",bytes(disk.free)],
+      ["Hostname",d.hostname||"-"]
+    ].map(x=>`<div class="metric"><span class="muted">${esc(x[0])}</span><b>${esc(x[1])}</b></div>`).join("");
+  }catch(e){$("metrics").textContent=e.message}
+}
+
+document.querySelectorAll(".tab").forEach(button=>button.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+  button.classList.add("active");$("panel-"+button.dataset.tab).classList.add("active");
+});
+
 $("runSql").onclick=async()=>{
   $("table").textContent="执行中...";
-  try{renderTable(await json("/api/v1/data/sql",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sql:$("sql").value})}))}
-  catch(e){$("table").textContent=e.message}
+  try{renderTable(await post("/api/v1/data/sql",{sql:$("sql").value}))}catch(e){$("table").textContent=e.message}
 };
-$("ask").onclick=async()=>{
-  $("answer").textContent="Agent 分析中...";
+$("dataAsk").onclick=async()=>{
+  $("dataAnswer").textContent="Agent 分析中...";
   try{
-    const d=await json("/api/v1/data/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:$("question").value})});
-    $("answer").textContent=d.answer+"\n\n"+d.insights.map(x=>"• "+x).join("\n")+"\n\nSQL:\n"+d.sql+"\n\nAttempts: "+d.attempts.length;
-    renderTable(d.result);
-  }catch(e){$("answer").textContent=e.message}
+    const d=await post("/api/v1/data/ask",{question:$("dataQuestion").value});
+    $("dataAnswer").textContent=d.answer+"\n\n"+d.insights.map(x=>"• "+x).join("\n")+"\n\nSQL:\n"+d.sql;
+    renderTable(d.result);renderTrace("dataTrace",d.trace);
+  }catch(e){$("dataAnswer").textContent=e.message}
 };
-load();
+$("docFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  $("docTitle").value=$("docTitle").value||f.name;
+  $("docContent").value=await f.text();
+};
+$("addDoc").onclick=async()=>{
+  $("docStatus").textContent="写入中...";
+  try{
+    const d=await post("/api/v1/knowledge/documents",{title:$("docTitle").value,content:$("docContent").value});
+    $("docStatus").textContent="已写入，document_id="+d.document_id;
+  }catch(e){$("docStatus").textContent=e.message}
+};
+$("knowledgeAsk").onclick=async()=>{
+  $("knowledgeAnswer").textContent="检索中...";
+  try{
+    const d=await post("/api/v1/knowledge/ask",{question:$("knowledgeQuestion").value});
+    $("knowledgeAnswer").textContent=d.answer;
+    $("sources").innerHTML=d.sources.length?d.sources.map((s,i)=>`<div class="source"><b>[来源 ${i+1}] ${esc(s.title)}</b><p>${esc(s.text)}</p><span class="muted">score ${Number(s.score).toFixed(3)}</span></div>`).join(""):"暂无来源";
+    renderTrace("knowledgeTrace",d.trace);
+  }catch(e){$("knowledgeAnswer").textContent=e.message}
+};
+$("refreshOps").onclick=loadOps;
+$("opsAsk").onclick=async()=>{
+  $("opsAnswer").textContent="诊断中...";
+  try{
+    const d=await post("/api/v1/ops/diagnose",{question:$("opsQuestion").value});
+    $("opsAnswer").textContent=d.answer;renderTrace("opsTrace",d.trace);loadOps();
+  }catch(e){$("opsAnswer").textContent=e.message}
+};
+
+(async()=>{
+  try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
+  loadSchema();loadOps();
+})();
 </script>
 </body>
 </html>

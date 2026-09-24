@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 
+from app.platform.models import TraceStep
+
 
 class DocumentRequest(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -22,3 +24,4 @@ class KnowledgeAnswer(BaseModel):
     question: str
     answer: str
     sources: list[Source]
+    trace: list[TraceStep] = Field(default_factory=list)

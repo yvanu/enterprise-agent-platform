@@ -1,6 +1,7 @@
 from app.agents.knowledge.models import KnowledgeAnswer, Source
 from app.agents.knowledge.store import KnowledgeStore
 from app.platform.llm import OpenAICompatibleLLM
+from app.platform.models import TraceStep
 
 
 class KnowledgeAgent:
@@ -14,8 +15,9 @@ class KnowledgeAgent:
 
     def ask(self, question: str) -> KnowledgeAnswer:
         sources = self.store.search(question, self.llm.embed, self.top_k)
+        trace = [TraceStep(kind="tool", name="knowledge_search", detail=f"{len(sources)} sources")]
         if not sources:
-            return KnowledgeAnswer(question=question, answer="知识库中暂无可用资料。", sources=[])
+            return KnowledgeAnswer(question=question, answer="知识库中暂无可用资料。", sources=[], trace=trace)
 
         context = "\n\n".join(
             f"[来源 {i + 1}] {source['title']}\n{source['text']}"
@@ -36,8 +38,10 @@ class KnowledgeAgent:
                 },
             ]
         )
+        trace.append(TraceStep(kind="llm", name="answer_with_context"))
         return KnowledgeAnswer(
             question=question,
             answer=answer,
             sources=[Source(**source) for source in sources],
+            trace=trace,
         )
