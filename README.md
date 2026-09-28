@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/yvanu/enterprise-agent-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/yvanu/enterprise-agent-platform/actions/workflows/ci.yml)
 
-[Architecture](docs/ARCHITECTURE.md) · [Demo Guide](docs/DEMO.md) · [Interview Guide](docs/INTERVIEW.md)
+[Architecture](docs/ARCHITECTURE.md) · [Demo Guide](docs/DEMO.md) · [Interview Guide](docs/INTERVIEW.md) · [Changelog](CHANGELOG.md)
 
 面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。
 
