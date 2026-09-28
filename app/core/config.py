@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     ops_enable_kubernetes: bool = False
     ops_command_timeout_seconds: int = 5
 
+    platform_db_path: str = "./data/platform.db"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

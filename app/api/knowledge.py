@@ -6,6 +6,7 @@ from app.agents.knowledge.parser import extract_text
 from app.agents.knowledge.store import KnowledgeStore
 from app.core.config import get_settings
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
+from app.platform.runs import start_run
 
 
 router = APIRouter(prefix="/api/v1/knowledge", tags=["knowledge"])
@@ -48,9 +49,14 @@ async def upload_document(file: UploadFile = File(...)) -> dict[str, int | str]:
 
 @router.post("/ask", response_model=KnowledgeAnswer)
 def ask(request: AskRequest) -> KnowledgeAnswer:
+    run = start_run("knowledge")
     try:
-        return agent.ask(request.question)
+        answer = agent.ask(request.question)
+        run.success(answer.trace)
+        return answer
     except LLMNotConfiguredError as exc:
+        run.error(exc)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
+        run.error(exc)
         raise HTTPException(status_code=400, detail=str(exc)) from exc

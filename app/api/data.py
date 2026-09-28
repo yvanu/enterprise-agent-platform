@@ -13,6 +13,7 @@ from app.db.engine import Database
 from app.db.introspection import describe_schema
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
 from app.platform.policy import require_tool
+from app.platform.runs import start_run
 
 
 router = APIRouter(prefix="/api/v1/data", tags=["data"])
@@ -67,9 +68,14 @@ def execute_sql(request: SqlRequest) -> QueryResult:
 
 @router.post("/ask", response_model=AgentAnswer)
 def ask(request: AskRequest) -> AgentAnswer:
+    run = start_run("data")
     try:
-        return DataAgent(get_database(request.source), llm).ask(request.question)
+        answer = DataAgent(get_database(request.source), llm).ask(request.question)
+        run.success(answer.trace)
+        return answer
     except LLMNotConfiguredError as exc:
+        run.error(exc)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
+        run.error(exc)
         raise HTTPException(status_code=400, detail=str(exc)) from exc

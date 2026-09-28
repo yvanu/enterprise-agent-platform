@@ -12,6 +12,7 @@ from app.agents.ops.models import (
 )
 from app.core.config import get_settings
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
+from app.platform.runs import start_run
 
 
 router = APIRouter(prefix="/api/v1/ops", tags=["ops"])
@@ -63,9 +64,14 @@ def kubernetes() -> RuntimeInventory:
 
 @router.post("/diagnose", response_model=OpsAnswer)
 def diagnose(request: DiagnoseRequest) -> OpsAnswer:
+    run = start_run("ops")
     try:
-        return agent.diagnose(request.question)
+        answer = agent.diagnose(request.question)
+        run.success(answer.trace)
+        return answer
     except LLMNotConfiguredError as exc:
+        run.error(exc)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except Exception as exc:
+        run.error(exc)
         raise HTTPException(status_code=400, detail=str(exc)) from exc

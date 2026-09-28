@@ -38,12 +38,21 @@
     <button class="tab" data-tab="ops">Ops Agent</button>
   </nav>
 
-  <div class="card">
-    <div class="actions" style="justify-content:space-between;margin-top:0">
-      <h3 style="margin:0">Tool Policy</h3>
-      <span class="muted">平台统一工具权限清单</span>
+  <div class="grid">
+    <div class="card">
+      <div class="actions" style="justify-content:space-between;margin-top:0">
+        <h3 style="margin:0">Tool Policy</h3>
+        <span class="muted">平台统一工具权限清单</span>
+      </div>
+      <div id="toolPolicies" class="chips" style="margin-top:12px">加载中...</div>
     </div>
-    <div id="toolPolicies" class="chips" style="margin-top:12px">加载中...</div>
+    <div class="card">
+      <div class="actions" style="justify-content:space-between;margin-top:0">
+        <h3 style="margin:0">Agent Runs</h3>
+        <button class="secondary" id="refreshRuns">刷新</button>
+      </div>
+      <div id="recentRuns" class="muted" style="margin-top:12px">加载中...</div>
+    </div>
   </div>
 
   <section class="panel active" id="panel-data">
@@ -201,6 +210,12 @@ async function loadToolPolicies(){
     $("toolPolicies").innerHTML=policies.map(x=>`<span class="chip">${esc(x.agent)} · ${esc(x.name)} · ${esc(x.risk)} · ${esc(x.mode)}</span>`).join("");
   }catch(e){$("toolPolicies").textContent=e.message}
 }
+async function loadRuns(){
+  try{
+    const runs=await api("/api/v1/platform/runs?limit=8");
+    $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}</span></p>`).join(""):"暂无运行记录";
+  }catch(e){$("recentRuns").textContent=e.message}
+}
 async function loadOps(){
   try{
     const d=await api("/api/v1/ops/snapshot"), m=d.memory||{}, disk=d.disk||{};
@@ -243,6 +258,7 @@ $("dataAsk").onclick=async()=>{
     $("downloadReport").disabled=!lastReport;
     renderTable(d.result);renderChart(d.chart);renderTrace("dataTrace",d.trace);
   }catch(e){$("dataAnswer").textContent=e.message}
+  finally{loadRuns()}
 };
 $("downloadReport").onclick=()=>{
   if(!lastReport)return;
@@ -279,7 +295,9 @@ $("knowledgeAsk").onclick=async()=>{
     $("sources").innerHTML=d.sources.length?d.sources.map((s,i)=>`<div class="source"><b>[来源 ${i+1}] ${esc(s.title)}</b><p>${esc(s.text)}</p><span class="muted">score ${Number(s.score).toFixed(3)}</span></div>`).join(""):"暂无来源";
     renderTrace("knowledgeTrace",d.trace);
   }catch(e){$("knowledgeAnswer").textContent=e.message}
+  finally{loadRuns()}
 };
+$("refreshRuns").onclick=loadRuns;
 $("refreshOps").onclick=loadOps;
 $("refreshLogs").onclick=loadLogs;
 $("runProm").onclick=async()=>{
@@ -309,11 +327,12 @@ $("opsAsk").onclick=async()=>{
     if(d.docker)$("runtimeResult").textContent="Docker\n"+JSON.stringify(d.docker.items,null,2);
     if(d.kubernetes)$("runtimeResult").textContent+=($("runtimeResult").textContent?"\n\n":"")+"Kubernetes\n"+JSON.stringify(d.kubernetes.items,null,2);
   }catch(e){$("opsAnswer").textContent=e.message}
+  finally{loadRuns()}
 };
 
 (async()=>{
   try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
-  await loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadOps();
+  await loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadRuns();loadOps();
 })();
 </script>
 </body>
