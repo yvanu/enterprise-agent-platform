@@ -4,7 +4,7 @@
 
 [Architecture](docs/ARCHITECTURE.md) · [Demo Guide](docs/DEMO.md) · [Interview Guide](docs/INTERVIEW.md) · [Changelog](CHANGELOG.md)
 
-面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。
+面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Web Session / Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。Web Console 采用资源化 Enterprise SaaS 信息架构，统一管理 Agents、Knowledge、Data Sources、Runs、Evaluations、Approvals、Integrations、Credentials 与 Policies。
 
 ## 业务 Agent 与 Supervisor
 
@@ -124,16 +124,23 @@ python scripts/demo_incident.py --json
 
 ## 身份认证与 RBAC
 
-默认开发模式下 `AUTH_ENABLED=false`，API 以 `development/admin` 身份运行；共享或生产环境应开启认证：
+默认开发模式下 `AUTH_ENABLED=false`，API 以 `development/admin` 身份运行；共享演示或生产环境应开启认证：
 
 ```env
 AUTH_ENABLED=true
 AUTH_TOKENS={"user-token":"alice:user","operator-token":"operator:operator","approver-token":"reviewer:approver","admin-token":"admin:admin"}
+
+CONSOLE_USERNAME=demo
+CONSOLE_PASSWORD=demo
+CONSOLE_ROLE=admin
+SESSION_MAX_AGE_SECONDS=43200
 ```
+
+Web Console 使用独立登录页。登录成功后服务端生成随机 Session Token，并通过 HttpOnly / SameSite=Lax Cookie 保存；浏览器不需要持有管理员 Bearer Token。脚本、API Client 和自动化程序仍可继续使用 Bearer Token。演示环境默认账号为 `demo / demo`，生产环境必须替换或关闭演示凭据。
 
 角色分工：`user` 可使用普通只读 Agent 能力；`operator` 可写入知识库、发起审批和执行已批准动作；`approver` 可查看并审批请求；`admin` 拥有全部权限。审批人由认证身份确定，客户端不能伪造审批人；非管理员不能审批自己发起的请求。
 
-启动时会执行配置检查：生产环境必须启用认证、不能使用 `.env.example` 的示例 token；`AUTH_ENABLED=true` 时必须配置合法 `username:role`。`LLM_API_KEY` 使用 `SecretStr`，`AUTH_TOKENS` 不进入 Settings repr；`.env` 已被 gitignore，生产部署应通过环境变量或 Secret Store 注入真实凭据。
+当前 Web Session 使用进程内存储，适合单实例演示；多副本生产环境应迁移到 OIDC/JWT、Redis 或数据库 Session Store。启动时会执行配置检查：生产环境必须启用认证、不能使用 `.env.example` 的示例 token；`AUTH_ENABLED=true` 时必须配置合法 `username:role`。`LLM_API_KEY` 与 Console Password 使用 `SecretStr`，`AUTH_TOKENS` 不进入 Settings repr；`.env` 已被 gitignore，生产部署应通过环境变量或 Secret Store 注入真实凭据。
 
 ## Request Trace 与统一错误模型
 
@@ -218,6 +225,9 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 - `GET /health/ready`：数据库、平台状态库、知识库就绪检查；失败返回 503
 
 ### Auth
+- `GET /api/v1/auth/status`：返回认证模式状态
+- `POST /api/v1/auth/login`：Web Console 用户名/密码登录并创建 HttpOnly Session
+- `POST /api/v1/auth/logout`：注销当前 Web Session
 - `GET /api/v1/auth/me`：返回当前认证用户和角色
 
 ### Platform

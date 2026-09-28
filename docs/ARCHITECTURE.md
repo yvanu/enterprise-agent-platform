@@ -5,7 +5,7 @@
 ```mermaid
 flowchart TB
   CLIENT[Web UI / API Client] --> HTTP[Request ID / Correlation ID / Error Model]
-  HTTP --> AUTH[Bearer Auth + RBAC]
+  HTTP --> AUTH[Web Session / Bearer Auth + RBAC]
 
   AUTH --> DATA[Data Agent]
   AUTH --> KNOW[Knowledge Agent]
@@ -98,7 +98,7 @@ Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The 
 
 | Boundary | Enforcement |
 | --- | --- |
-| User identity | Bearer token authentication |
+| User identity | Web Session (HttpOnly Cookie) + Bearer token authentication |
 | API permissions | RBAC: user / operator / approver / admin |
 | Agent capability | Tool Policy registry |
 | SQL execution | SQL Guard + database read-only account recommendation |
@@ -120,7 +120,7 @@ Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The 
 | Demo business data | SQLite / external SQLAlchemy database | PostgreSQL / Kingbase |
 | Knowledge chunks + embeddings | SQLite | pgvector / managed vector DB |
 | Runs / approvals | SQLite | PostgreSQL |
-| Auth identities | config token map | OIDC / enterprise IdP |
+| Auth identities | config token map + in-memory Web Session | OIDC / enterprise IdP + shared session store |
 
 The current SQLite choices are deliberate for a self-contained demo. The platform interfaces keep the migration path visible without introducing infrastructure before it is needed.
 
