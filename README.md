@@ -79,6 +79,21 @@ app/
 
 暂不增加 Supervisor。出现真实跨 Agent 协同需求时再加。
 
+```mermaid
+flowchart LR
+  UI[Web UI / API Client] --> AUTH[Auth + RBAC]
+  AUTH --> DATA[Data Agent]
+  AUTH --> KNOW[Knowledge Agent]
+  AUTH --> OPS[Ops Agent]
+  DATA --> POLICY[Tool Policy]
+  KNOW --> POLICY
+  OPS --> POLICY
+  POLICY --> APPROVAL[Human Approval]
+  DATA --> RUNS[Runs / Eval / Metrics]
+  KNOW --> RUNS
+  OPS --> RUNS
+```
+
 ## 身份认证与 RBAC
 
 默认开发模式下 `AUTH_ENABLED=false`，API 以 `development/admin` 身份运行；共享或生产环境应开启认证：
@@ -92,7 +107,25 @@ AUTH_TOKENS={"user-token":"alice:user","operator-token":"operator:operator","app
 
 ## CI / Regression
 
-GitHub Actions 会在 `main` push 和 Pull Request 时使用 Python 3.11 执行完整 `pytest`。其中包含离线 Regression Suite，因此 CI 不依赖外部 LLM Key，也不会访问生产数据库。
+GitHub Actions 会在 `main` push 和 Pull Request 时使用 Python 3.11 执行 `compileall`、完整 `pytest`、`pip check` 和 `pip-audit`。其中包含离线 Regression Suite，因此 CI 不依赖外部 LLM Key，也不会访问生产数据库；Workflow 权限固定为只读仓库内容。
+
+## Docker 部署与压测
+
+镜像使用 Python 3.11、非 root 用户，并已安装 PostgreSQL 驱动：
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+`/app/data` 使用 Docker volume 持久化。若接企业 PostgreSQL/Kingbase，只需通过 `DATABASE_URL` 或 `DATA_SOURCES` 配置连接，不会在启动时修改非 SQLite 业务库。
+
+提供一个只依赖 Python 标准库的轻量压测脚本：
+
+```bash
+python scripts/load_test.py --url http://127.0.0.1:8000/health --requests 500 --concurrency 20
+python scripts/load_test.py --url http://127.0.0.1:8000/api/v1/platform/tools --token admin-token
+```
 
 ## 快速启动
 
