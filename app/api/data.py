@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.db.engine import Database
 from app.db.introspection import describe_schema
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
+from app.platform.policy import require_tool
 
 
 router = APIRouter(prefix="/api/v1/data", tags=["data"])
@@ -48,6 +49,7 @@ def sources() -> list[DataSourceInfo]:
 @router.get("/schema")
 def schema(source: str = Query("default")) -> dict:
     try:
+        require_tool("data", "schema", "read")
         database = get_database(source)
         return describe_schema(database.engine, database.schema)
     except Exception as exc:
@@ -57,6 +59,7 @@ def schema(source: str = Query("default")) -> dict:
 @router.post("/sql", response_model=QueryResult)
 def execute_sql(request: SqlRequest) -> QueryResult:
     try:
+        require_tool("data", "readonly_sql", "read")
         return get_database(request.source).execute_readonly(request.sql)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

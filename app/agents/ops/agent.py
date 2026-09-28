@@ -10,6 +10,7 @@ import httpx
 from app.agents.ops.models import LogTail, OpsAnswer, OpsSnapshot, PrometheusResult, RuntimeInventory
 from app.platform.llm import OpenAICompatibleLLM
 from app.platform.models import TraceStep
+from app.platform.policy import require_tool
 
 
 def _memory() -> dict[str, int]:
@@ -46,6 +47,7 @@ class OpsAgent:
         self.command_timeout_seconds = command_timeout_seconds
 
     def snapshot(self) -> OpsSnapshot:
+        require_tool("ops", "snapshot", "read")
         disk = shutil.disk_usage("/")
         try:
             load = tuple(float(x) for x in os.getloadavg())
@@ -61,6 +63,7 @@ class OpsAgent:
         )
 
     def logs(self, lines: int = 80) -> list[LogTail]:
+        require_tool("ops", "log_tail", "read")
         lines = max(1, min(lines, 500))
         tails: list[LogTail] = []
         for path in self.log_files:
@@ -72,6 +75,7 @@ class OpsAgent:
         return tails
 
     def prometheus(self, query: str) -> PrometheusResult:
+        require_tool("ops", "prometheus", "read")
         if not self.prometheus_url:
             raise ValueError("PROMETHEUS_URL 未配置")
 
@@ -88,6 +92,7 @@ class OpsAgent:
         return PrometheusResult(query=query, result=result)
 
     def docker_containers(self) -> RuntimeInventory:
+        require_tool("ops", "docker_ps", "read")
         if not self.enable_docker:
             raise ValueError("Docker 只读工具未启用")
         if not shutil.which("docker"):
@@ -104,6 +109,7 @@ class OpsAgent:
         return RuntimeInventory(tool="docker", items=items[:100])
 
     def kubernetes_pods(self) -> RuntimeInventory:
+        require_tool("ops", "kubernetes_pods", "read")
         if not self.enable_kubernetes:
             raise ValueError("Kubernetes 只读工具未启用")
         if not shutil.which("kubectl"):

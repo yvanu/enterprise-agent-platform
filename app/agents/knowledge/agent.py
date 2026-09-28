@@ -2,6 +2,7 @@ from app.agents.knowledge.models import KnowledgeAnswer, Source
 from app.agents.knowledge.store import KnowledgeStore
 from app.platform.llm import OpenAICompatibleLLM
 from app.platform.models import TraceStep
+from app.platform.policy import require_tool
 
 
 class KnowledgeAgent:
@@ -11,12 +12,15 @@ class KnowledgeAgent:
         self.top_k = top_k
 
     def add_document(self, title: str, content: str) -> int:
+        require_tool("knowledge", "document_ingest", "write")
         return self.store.add_document(title, content, self.llm.embed)
 
     def documents(self) -> list[dict]:
+        require_tool("knowledge", "document_catalog", "read")
         return self.store.list_documents()
 
     def ask(self, question: str) -> KnowledgeAnswer:
+        require_tool("knowledge", "vector_search", "read")
         sources = self.store.search(question, self.llm.embed, self.top_k)
         trace = [TraceStep(kind="tool", name="knowledge_search", detail=f"{len(sources)} sources")]
         if not sources:

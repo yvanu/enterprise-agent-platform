@@ -16,6 +16,7 @@ POLICIES = [
     ToolPolicy(name="readonly_sql", agent="data", risk="low", mode="read"),
     ToolPolicy(name="report", agent="data", risk="low", mode="read"),
     ToolPolicy(name="document_ingest", agent="knowledge", risk="medium", mode="write"),
+    ToolPolicy(name="document_catalog", agent="knowledge", risk="low", mode="read"),
     ToolPolicy(name="vector_search", agent="knowledge", risk="low", mode="read"),
     ToolPolicy(name="snapshot", agent="ops", risk="low", mode="read"),
     ToolPolicy(name="log_tail", agent="ops", risk="low", mode="read"),
@@ -25,7 +26,27 @@ POLICIES = [
 ]
 
 
+class ToolPolicyError(PermissionError):
+    pass
+
+
 def tool_policies(agent: str | None = None) -> list[ToolPolicy]:
     if agent is None:
         return POLICIES
     return [policy for policy in POLICIES if policy.agent == agent]
+
+
+def require_tool(agent: str, name: str, mode: str) -> ToolPolicy:
+    policy = next(
+        (item for item in POLICIES if item.agent == agent and item.name == name),
+        None,
+    )
+    if policy is None:
+        raise ToolPolicyError(f"未注册的 Tool: {agent}.{name}")
+    if policy.mode != mode:
+        raise ToolPolicyError(
+            f"Tool 模式不匹配: {agent}.{name} requires {policy.mode}, got {mode}"
+        )
+    if policy.approval_required:
+        raise ToolPolicyError(f"Tool 需要人工审批: {agent}.{name}")
+    return policy

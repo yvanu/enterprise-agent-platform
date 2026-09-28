@@ -6,6 +6,7 @@ from app.db.engine import Database
 from app.db.introspection import describe_schema, schema_to_prompt
 from app.platform.llm import LLMResponseError, OpenAICompatibleLLM
 from app.platform.models import TraceStep
+from app.platform.policy import require_tool
 
 
 def _chart(result: QueryResult) -> ChartSpec | None:
@@ -128,6 +129,7 @@ class DataAgent:
         }
 
     def ask(self, question: str) -> AgentAnswer:
+        require_tool("data", "schema", "read")
         schema_info = describe_schema(self.db.engine, self.db.schema)
         schema = schema_to_prompt(schema_info)
         trace = [TraceStep(kind="tool", name="schema", detail=f"{len(schema_info['tables'])} tables")]
@@ -148,6 +150,7 @@ class DataAgent:
             attempts.append(attempt)
 
             try:
+                require_tool("data", "readonly_sql", "read")
                 result = self.db.execute_readonly(sql)
             except Exception as exc:
                 previous_sql = sql
@@ -165,6 +168,7 @@ class DataAgent:
             )
             trace.append(TraceStep(kind="llm", name="summarize"))
             chart = _chart(result)
+            require_tool("data", "report", "read")
             report = _report(question, summary["answer"], summary["insights"], sql, result)
             trace.append(TraceStep(kind="tool", name="presentation", detail="chart + markdown report"))
             return AgentAnswer(
