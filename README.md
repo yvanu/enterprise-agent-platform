@@ -1,6 +1,6 @@
 # Enterprise Agent Platform
 
-面向企业场景的多 Agent 平台。三个业务 Agent 共用同一套 LLM Runtime、配置、Tool Policy、运行审计和 API 服务；Agent/接口执行 Tool 前会经过统一权限校验。
+面向企业场景的多 Agent 平台。三个业务 Agent 共用同一套 LLM Runtime、配置、Tool Policy、运行审计、确定性 Eval 和 API 服务；Agent/接口执行 Tool 前会经过统一权限校验。
 
 ## 三个 Agent
 
@@ -57,7 +57,8 @@ app/
 ├── platform/
 │   ├── llm.py          # Chat + Embedding，共享 Runtime
 │   ├── policy.py       # Tool 风险与权限清单
-│   └── runs.py         # Agent Run 审计与耗时记录
+│   ├── runs.py         # Agent Run 审计与耗时记录
+│   └── evals.py        # 基于 Trace 的确定性 Eval
 ├── api/
 │   ├── data.py
 │   ├── knowledge.py
@@ -112,6 +113,7 @@ EMBEDDING_MODEL=
 ### Platform
 - `GET /api/v1/platform/tools`：统一 Tool Policy 清单
 - `GET /api/v1/platform/runs`：Agent 运行记录，可按 Agent 过滤
+- `GET /api/v1/platform/evals`：对 Run Trace 做确定性评估，可按 Agent 过滤
 
 ### Data
 - `GET /api/v1/data/sources`
@@ -137,4 +139,4 @@ EMBEDDING_MODEL=
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Ops Agent 当前只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。真正增加高风险写操作时再接 Human-in-the-loop 审批流。
+平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Ops Agent 当前只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。真正增加高风险写操作时再接 Human-in-the-loop 审批流。

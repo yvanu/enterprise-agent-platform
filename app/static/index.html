@@ -51,6 +51,7 @@
         <h3 style="margin:0">Agent Runs</h3>
         <button class="secondary" id="refreshRuns">刷新</button>
       </div>
+      <div id="evalSummary" class="chips" style="margin-top:12px"></div>
       <div id="recentRuns" class="muted" style="margin-top:12px">加载中...</div>
     </div>
   </div>
@@ -212,8 +213,18 @@ async function loadToolPolicies(){
 }
 async function loadRuns(){
   try{
-    const runs=await api("/api/v1/platform/runs?limit=8");
+    const [runs,evals]=await Promise.all([
+      api("/api/v1/platform/runs?limit=8"),
+      api("/api/v1/platform/evals?limit=20")
+    ]);
     $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}</span></p>`).join(""):"暂无运行记录";
+    if(evals.length){
+      const passed=evals.filter(x=>x.passed).length;
+      const avg=Math.round(evals.reduce((sum,x)=>sum+x.score,0)/evals.length);
+      $("evalSummary").innerHTML=`<span class="chip">Eval ${passed}/${evals.length} pass</span><span class="chip">avg ${avg}</span>`;
+    }else{
+      $("evalSummary").innerHTML='<span class="chip">Eval 暂无样本</span>';
+    }
   }catch(e){$("recentRuns").textContent=e.message}
 }
 async function loadOps(){
