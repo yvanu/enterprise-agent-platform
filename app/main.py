@@ -2,6 +2,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.api.auth import router as auth_router
@@ -27,10 +28,13 @@ app.include_router(auth_router)
 for router in (data_router, knowledge_router, ops_router, platform_router, supervisor_router):
     app.include_router(router, dependencies=[Depends(current_identity)])
 
+static_dir = Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 
 @app.get("/", include_in_schema=False)
 def index() -> FileResponse:
-    return FileResponse(Path(__file__).parent / "static" / "index.html")
+    return FileResponse(static_dir / "index.html")
 
 
 @app.get("/health")

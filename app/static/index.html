@@ -1,523 +1,387 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Enterprise Agent Platform</title>
-  <style>
-    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#182230;background:#f6f8fb}
-    *{box-sizing:border-box}body{margin:0}.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
-    h1{margin:6px 0;font-size:30px}h2,h3,h4{margin-top:0}p{color:#667085}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
-    .status{display:inline-block;padding:4px 9px;border-radius:999px;background:#ecfdf3;color:#027a48;font-size:12px;font-weight:700}.auth-box{width:300px}.auth-box input{margin-top:8px}
-    .tabs{display:flex;gap:8px;margin:24px 0}.tab{background:#fff;color:#475467;border:1px solid #d0d5dd}.tab.active{background:#1570ef;color:#fff;border-color:#1570ef}
-    button{border:0;border-radius:9px;padding:10px 15px;font-weight:650;cursor:pointer;background:#1570ef;color:#fff}button.secondary{background:#fff;color:#344054;border:1px solid #d0d5dd}
-    .panel{display:none}.panel.active{display:block}.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.card{background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:18px;box-shadow:0 1px 2px #1018280d;margin-bottom:18px}
-    textarea,input,select{width:100%;border:1px solid #d0d5dd;border-radius:9px;padding:11px;font:inherit;background:#fff}textarea{min-height:105px;resize:vertical}.actions{display:flex;gap:10px;margin-top:12px;align-items:center}
-    pre{background:#101828;color:#e4e7ec;border-radius:10px;padding:14px;overflow:auto;white-space:pre-wrap;min-height:90px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px;border-bottom:1px solid #eaecf0}th{color:#475467}
-    .muted{font-size:13px;color:#98a2b3}.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:5px 9px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:12px}
-    .trace{display:grid;gap:8px}.trace-item{display:grid;grid-template-columns:82px 150px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #f2f4f7;font-size:13px}.trace-item:last-child{border:0}.ok{color:#027a48}.error{color:#b42318}
-    .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric{background:#f8fafc;border:1px solid #eaecf0;border-radius:10px;padding:12px}.metric b{display:block;font-size:20px;margin-top:4px}.agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:-8px 0 20px}.agent-card{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px}.agent-card b{display:block;margin-bottom:5px}.agent-card span{font-size:11px;color:#1570ef;font-weight:800}.agent-card small{color:#667085;line-height:1.45}
-    .source{padding:10px 0;border-bottom:1px solid #eaecf0}.source:last-child{border:0}.bars{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:130px 1fr 70px;gap:10px;align-items:center;font-size:13px}.bar-track{height:12px;background:#f2f4f7;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:#1570ef;border-radius:999px}.run-link{padding:0;background:none;color:#1570ef;border:0;font:inherit;font-weight:700}.run-detail{margin-top:12px;padding-top:12px;border-top:1px solid #eaecf0}
-    @media(max-width:800px){.grid,.metric-grid,.agent-grid{grid-template-columns:1fr}.top{display:block}.trace-item{grid-template-columns:1fr}}
-  </style>
+  <meta name="color-scheme" content="light">
+  <title>Enterprise Agent</title>
+  <link rel="stylesheet" href="/static/app.css?v=20260928-3">
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div>
-      <span class="status" id="health">checking</span>
-      <h1>Enterprise Agent Platform</h1>
-      <p>Data · Knowledge · Ops · Supervisor，共享 Auth/RBAC、Tool Policy、Approval、Trace/Eval。</p>
+<svg class="svg-sprite" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M9.5 20v-6h5v6"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M8 12h.01M16 12h.01M8 16h8"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H20v17H7.5A3.5 3.5 0 0 0 4 22z"/><path d="M4 5.5V22M8 6h8"/></symbol>
+  <symbol id="i-database" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="i-approval" viewBox="0 0 24 24"><path d="M9 3h6l1 3h3v15H5V6h3z"/><path d="m8 13 2.5 2.5L16 10"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="m8 12 8-8M14 4l6 6M4 14l6 6M6 12l6 6"/><path d="m4 20 4-4"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l2 2M14 9l2 2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.8 3.1 8.1 7.5 9.5 4.4-1.4 7.5-4.7 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21h-4v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H3v-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V3h4v.1A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9A1.7 1.7 0 0 0 21 10h.1v4H21a1.7 1.7 0 0 0-1.6 1z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></symbol>
+  <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.9 1.9c-1.2.9-1.7 1.3-1.7 2.6M12 17h.01"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 7l5 5-5 5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M10 7l-5 5 5 5"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+</svg>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">EA</div>
+      <div class="brand-copy"><strong>Enterprise Agent</strong><span>Control Plane</span></div>
     </div>
-    <div class="auth-box"><div class="chips"><span class="chip">FastAPI</span><span class="chip">RBAC</span><span class="chip">Human Approval</span><span class="chip">Eval</span></div><input id="apiToken" type="password" placeholder="Bearer Token"><div id="identityStatus" class="muted" style="margin-top:6px">检查身份...</div></div>
-  </header>
 
-  <nav class="tabs">
-    <button class="tab active" data-tab="data">Data Agent</button>
-    <button class="tab" data-tab="knowledge">Knowledge Agent</button>
-    <button class="tab" data-tab="ops">Ops Agent</button>
-    <button class="tab" data-tab="supervisor">Supervisor</button>
-  </nav>
+    <nav class="nav" aria-label="Primary navigation">
+      <button class="nav-item active" data-page="home"><svg><use href="#i-home"/></svg><span>Home</span></button>
 
-  <div class="agent-grid">
-    <div class="agent-card"><span>01 · ANALYTICS</span><b>Data Agent</b><small>Schema → SQL Guard → Query → Summary → Report</small></div>
-    <div class="agent-card"><span>02 · RAG</span><b>Knowledge Agent</b><small>Role scope → Retrieval → Citation → Versioned docs</small></div>
-    <div class="agent-card"><span>03 · OPERATIONS</span><b>Ops Agent</b><small>Snapshot · Logs · Prometheus · Approved actions</small></div>
-    <div class="agent-card"><span>04 · ORCHESTRATION</span><b>Supervisor</b><small>Ops + Knowledge + Data → Incident conclusion</small></div>
-  </div>
+      <span class="nav-group">Build</span>
+      <button class="nav-item" data-page="agents"><svg><use href="#i-bot"/></svg><span>Agents</span></button>
+      <button class="nav-item" data-page="knowledge"><svg><use href="#i-book"/></svg><span>Knowledge</span></button>
+      <button class="nav-item" data-page="data-sources"><svg><use href="#i-database"/></svg><span>Data sources</span></button>
 
-  <div class="grid">
-    <div>
-      <div class="card">
-        <div class="actions" style="justify-content:space-between;margin-top:0">
-          <h3 style="margin:0">Tool Policy</h3>
-          <span class="muted">平台统一工具权限清单</span>
-        </div>
-        <div id="toolPolicies" class="chips" style="margin-top:12px">加载中...</div>
-      </div>
-      <div class="card">
-        <div class="actions" style="justify-content:space-between;margin-top:0">
-          <h3 style="margin:0">Human Approval</h3>
-          <button class="secondary" id="refreshApprovals">刷新</button>
-        </div>
-        <div id="approvals" class="muted" style="margin-top:12px">加载中...</div>
-      </div>
-    </div>
-    <div>
-      <div class="card">
-        <div class="actions" style="justify-content:space-between;margin-top:0">
-          <h3 style="margin:0">Agent Runs</h3>
-          <button class="secondary" id="refreshRuns">刷新</button>
-        </div>
-        <div id="evalSummary" class="chips" style="margin-top:12px"></div>
-        <div id="qualityMetrics" style="margin-top:12px"></div>
-        <div id="recentRuns" class="muted" style="margin-top:12px">加载中...</div>
-        <div id="runDetail" class="run-detail muted">点击 Run ID 查看 Trace 与 Eval 明细。</div>
-      </div>
-      <div class="card">
-        <div class="actions" style="justify-content:space-between;margin-top:0">
-          <h3 style="margin:0">Regression</h3>
-          <button class="secondary" id="runRegression">运行回归</button>
-        </div>
-        <div id="regressionResult" class="muted" style="margin-top:12px">固定样本，不调用外部 LLM。</div>
+      <span class="nav-group">Operate</span>
+      <button class="nav-item" data-page="runs"><svg><use href="#i-activity"/></svg><span>Runs</span></button>
+      <button class="nav-item" data-page="evaluations"><svg><use href="#i-check"/></svg><span>Evaluations</span></button>
+      <button class="nav-item" data-page="approvals"><svg><use href="#i-approval"/></svg><span>Approvals</span><em id="approvalNavCount">0</em></button>
+
+      <span class="nav-group">Platform</span>
+      <button class="nav-item" data-page="integrations"><svg><use href="#i-plug"/></svg><span>Integrations</span></button>
+      <button class="nav-item" data-page="credentials"><svg><use href="#i-key"/></svg><span>Credentials</span></button>
+      <button class="nav-item" data-page="policies"><svg><use href="#i-shield"/></svg><span>Policies</span></button>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <button class="nav-item" data-page="settings"><svg><use href="#i-settings"/></svg><span>Settings</span></button>
+      <div class="sidebar-user">
+        <div class="avatar">AD</div>
+        <div><strong id="sidebarUser">development</strong><span id="sidebarRole">admin</span></div>
       </div>
     </div>
-  </div>
+  </aside>
 
-  <section class="panel active" id="panel-data">
-    <div class="grid">
-      <div>
-        <div class="card">
-          <h3>自然语言数据分析</h3>
-          <label class="muted" for="dataSource">数据源</label>
-          <select id="dataSource"><option value="default">default</option></select>
-          <div style="height:10px"></div>
-          <textarea id="dataQuestion">统计每类数据的数量，并指出数量最多的类别。</textarea>
-          <div class="actions"><button id="dataAsk">开始分析</button></div>
-          <p class="muted">自然语言分析需要配置 LLM_MODEL。</p>
-          <pre id="dataAnswer">等待执行...</pre>
-          <div id="dataChart"></div>
-          <div class="actions"><button class="secondary" id="downloadReport" disabled>下载 Markdown 报告</button></div>
-          <div id="dataTrace"></div>
+  <main class="main">
+    <header class="topbar">
+      <button class="workspace-switcher"><span class="workspace-dot"></span><strong>Production</strong><span class="chevron">⌄</span></button>
+      <button class="command-search" id="commandSearch"><svg><use href="#i-search"/></svg><span>Search agents, runs, resources…</span><kbd>⌘ K</kbd></button>
+      <div class="top-actions">
+        <button class="icon-btn" title="Help"><svg><use href="#i-help"/></svg></button>
+        <button class="icon-btn" title="Notifications"><svg><use href="#i-bell"/></svg></button>
+        <div class="avatar">AD</div>
+      </div>
+    </header>
+
+    <div id="toast" class="toast" role="status"></div>
+
+    <section class="page active" data-page-panel="home">
+      <header class="page-header home-header">
+        <div><h1>Good evening, <span id="homeUser">demo</span></h1><p>Here’s what needs your attention across the platform.</p></div>
+      </header>
+
+      <div id="attentionList" class="attention-list"></div>
+
+      <div class="home-grid">
+        <section class="content-section span-2">
+          <div class="section-heading"><div><h2>Agents</h2><p>Runtime health and recent performance</p></div><button class="link-button" data-go="agents">View all <svg><use href="#i-arrow"/></svg></button></div>
+          <div id="homeAgents" class="resource-list"></div>
+        </section>
+
+        <section class="content-section">
+          <div class="section-heading"><div><h2>Activity</h2><p>Latest platform events</p></div></div>
+          <div id="activityFeed" class="activity-feed"></div>
+        </section>
+      </div>
+
+      <section class="content-section metrics-section">
+        <div class="section-heading"><div><h2>Runtime</h2><p>Last 200 agent runs</p></div><button class="link-button" data-go="runs">Explore runs <svg><use href="#i-arrow"/></svg></button></div>
+        <div class="metric-strip">
+          <div><span>Total runs</span><strong id="metricRuns">—</strong></div>
+          <div><span>Success rate</span><strong id="metricSuccess">—</strong></div>
+          <div><span>P95 latency</span><strong id="metricP95">—</strong></div>
+          <div><span>Eval average</span><strong id="metricEval">—</strong></div>
         </div>
-        <div class="card">
-          <h3>安全 SQL 调试</h3>
-          <textarea id="sql">SELECT main_type, COUNT(*) AS total
+        <div id="performanceChart" class="performance-chart"></div>
+      </section>
+    </section>
+
+    <section class="page" data-page-panel="agents">
+      <header class="page-header">
+        <div><h1>Agents</h1><p>Build, inspect, and operate agents from one place.</p></div>
+      </header>
+      <div class="toolbar"><div class="filter-search"><svg><use href="#i-search"/></svg><input id="agentSearch" placeholder="Search agents"></div><span id="agentCount" class="muted-label">4 agents</span></div>
+      <div id="agentDirectory" class="resource-list large-list"></div>
+    </section>
+
+    <section class="page agent-page" data-page-panel="data">
+      <button class="back-link" data-go="agents"><svg><use href="#i-back"/></svg> Agents</button>
+      <header class="agent-detail-header">
+        <div class="agent-identity"><div class="agent-icon data-agent"><svg><use href="#i-database"/></svg></div><div><div class="title-line"><h1>Data Agent</h1><span class="status-chip healthy">Active</span></div><p>Natural-language analytics with guarded SQL execution.</p></div></div>
+        <button class="more-btn"><svg><use href="#i-more"/></svg></button>
+      </header>
+      <nav class="detail-tabs"><button class="active">Playground</button><button data-agent-tab="runs" data-agent="data">Runs</button><button data-agent-tab="evaluations" data-agent="data">Evaluations</button><button data-agent-tab="settings">Configuration</button></nav>
+
+      <div class="playground-layout">
+        <section class="playground-main">
+          <div class="conversation-head"><div><strong>Playground</strong><span>Test the agent against a live data source</span></div><select id="dataSource" class="compact-select"><option value="default">default</option></select></div>
+          <div class="conversation">
+            <div class="message user-message"><span>You</span><textarea id="dataQuestion">统计每类数据的数量，并指出数量最多的类别。</textarea></div>
+            <div class="message agent-message"><span>Data Agent</span><div id="dataAnswer" class="answer-placeholder">Run the agent to see its answer here.</div><div id="dataChart"></div><div id="table" class="result-table"></div></div>
+          </div>
+          <div class="composer-actions"><button class="primary-btn" id="dataAsk">Run agent</button><button class="secondary-btn" id="downloadReport" disabled>Download report</button></div>
+        </section>
+        <aside class="inspector">
+          <div class="inspector-head"><strong>Execution</strong><span>Trace and tool calls</span></div>
+          <div id="dataTrace" class="trace-stack empty-state">No execution yet.</div>
+          <details class="inspector-details"><summary>Database schema</summary><div id="schema" class="schema-list">Loading…</div></details>
+          <details class="inspector-details"><summary>SQL console</summary><textarea id="sql" class="code-field">SELECT main_type, COUNT(*) AS total
 FROM data_assets
 GROUP BY main_type
-ORDER BY total DESC</textarea>
-          <div class="actions"><button class="secondary" id="runSql">执行只读 SQL</button></div>
-          <div id="table" style="margin-top:12px">等待执行...</div>
-        </div>
+ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Run SQL</button></details>
+        </aside>
       </div>
-      <div class="card">
-        <h3>数据库 Schema</h3>
-        <div id="schema">加载中...</div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel" id="panel-knowledge">
-    <div class="grid">
-      <div>
-        <div class="card">
-          <h3>加入知识</h3>
-          <input id="docId" placeholder="文档 ID（留空新增，填写后更新文本版本）">
-          <div style="height:10px"></div>
-          <input id="docTitle" placeholder="文档标题">
-          <div style="height:10px"></div>
-          <input id="docTags" placeholder="标签，逗号分隔，例如 运维,雷达">
-          <div style="height:10px"></div>
-          <input id="docRoles" value="user,operator,approver,admin" placeholder="允许角色，逗号分隔">
-          <div style="height:10px"></div>
-          <input id="docFile" type="file" accept=".txt,.md,.csv,.json,.pdf,.docx">
-          <p class="muted">支持 txt、md、csv、json、PDF、DOCX；也可以直接粘贴文本。</p>
-          <textarea id="docContent" placeholder="粘贴文档内容"></textarea>
-          <div class="actions"><button id="addDoc">写入知识库</button><span class="muted" id="docStatus"></span></div>
-        </div>
-        <div class="card">
-          <h3>知识问答</h3>
-          <textarea id="knowledgeQuestion">雷达资料验收时需要检查什么？</textarea>
-          <div class="actions"><button id="knowledgeAsk">检索并回答</button></div>
-          <pre id="knowledgeAnswer">等待执行...</pre>
-          <div id="knowledgeTrace"></div>
-        </div>
-      </div>
-      <div>
-        <div class="card">
-          <h3>知识文档</h3>
-          <div id="knowledgeDocs" class="muted">加载中...</div>
-        </div>
-        <div class="card">
-          <h3>检索来源</h3>
-          <div id="sources" class="muted">暂无</div>
-        </div>
-      </div>
-    </div>
-  </section>
+    <section class="page agent-page" data-page-panel="knowledge-agent">
+      <button class="back-link" data-go="agents"><svg><use href="#i-back"/></svg> Agents</button>
+      <header class="agent-detail-header">
+        <div class="agent-identity"><div class="agent-icon knowledge-agent"><svg><use href="#i-book"/></svg></div><div><div class="title-line"><h1>Knowledge Agent</h1><span class="status-chip healthy">Active</span></div><p>Role-scoped retrieval with citations and versioned knowledge.</p></div></div>
+      </header>
+      <nav class="detail-tabs"><button class="active">Playground</button><button data-agent-tab="runs" data-agent="knowledge">Runs</button><button data-agent-tab="evaluations" data-agent="knowledge">Evaluations</button><button data-go="knowledge">Knowledge base</button></nav>
 
-  <section class="panel" id="panel-ops">
-    <div class="card">
-      <div class="actions" style="justify-content:space-between;margin-top:0"><h3 style="margin:0">系统快照</h3><button class="secondary" id="refreshOps">刷新</button></div>
-      <div class="metric-grid" id="metrics" style="margin-top:14px"><div class="muted">加载中...</div></div>
-    </div>
-    <div class="grid">
-      <div>
-        <div class="card">
-          <h3>故障诊断</h3>
-          <textarea id="opsQuestion">当前服务器资源状态是否存在明显异常？结合日志和监控数据分析，并说明还需要检查哪些信息。</textarea>
-          <div class="actions"><button id="opsAsk">开始诊断</button></div>
-          <p class="muted">只读取系统、配置日志和 Prometheus，不执行重启、修改配置等写操作。</p>
-          <pre id="opsAnswer">等待执行...</pre>
-        </div>
-        <div class="card">
-          <div class="actions" style="justify-content:space-between;margin-top:0"><h3 style="margin:0">配置日志</h3><button class="secondary" id="refreshLogs">读取日志</button></div>
-          <pre id="opsLogs">未读取</pre>
-        </div>
+      <div class="playground-layout">
+        <section class="playground-main">
+          <div class="conversation-head"><div><strong>Retrieval playground</strong><span>Ask against the current role-scoped knowledge base</span></div></div>
+          <div class="conversation">
+            <div class="message user-message"><span>You</span><textarea id="knowledgeQuestion">雷达资料验收时需要检查什么？</textarea></div>
+            <div class="message agent-message"><span>Knowledge Agent</span><div id="knowledgeAnswer" class="answer-placeholder">Ask a question to inspect retrieval and citations.</div><div id="sources" class="source-list"></div></div>
+          </div>
+          <div class="composer-actions"><button class="primary-btn" id="knowledgeAsk">Run agent</button></div>
+        </section>
+        <aside class="inspector"><div class="inspector-head"><strong>Execution</strong><span>Retrieval and answer trace</span></div><div id="knowledgeTrace" class="trace-stack empty-state">No execution yet.</div></aside>
       </div>
-      <div>
-        <div class="card">
-          <h3>执行轨迹</h3>
-          <div id="opsTrace" class="muted">暂无</div>
-        </div>
-        <div class="card">
-          <h3>Prometheus</h3>
-          <input id="promQuery" value="up" placeholder="PromQL">
-          <div class="actions"><button class="secondary" id="runProm">执行只读查询</button></div>
-          <pre id="promResult">未查询</pre>
-        </div>
-        <div class="card">
-          <h3>容器 / Kubernetes</h3>
-          <div class="actions"><button class="secondary" id="loadDocker">Docker PS</button><button class="secondary" id="loadK8s">Kubernetes Pods</button></div>
-          <pre id="runtimeResult">默认关闭；在 .env 中显式启用后可读取。</pre>
-        </div>
-        <div class="card">
-          <h3>受控运维动作</h3>
-          <input id="restartService" placeholder="OPS_ALLOWED_SERVICES 中的 systemd 服务名">
-          <div class="actions"><button class="secondary" id="requestRestart">申请重启</button></div>
-          <p class="muted">仅白名单服务；必须经过 Human Approval，且不接受任意 Shell。</p>
-        </div>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="panel" id="panel-supervisor">
-    <div class="grid">
-      <div class="card">
-        <h3>跨 Agent 故障调查</h3>
-        <label class="muted" for="supervisorSource">历史数据源</label>
-        <select id="supervisorSource"><option value="default">default</option></select>
-        <div style="height:10px"></div>
-        <textarea id="supervisorQuestion">为什么最近导入任务失败？请结合当前运维状态、知识库手册和历史数据给出排查结论。</textarea>
-        <div class="actions"><button id="supervisorAsk">开始调查</button><button class="secondary" id="supervisorDemo">一键离线 Demo</button></div>
-        <p class="muted">实时调查使用已配置 LLM；离线 Demo 使用隔离临时数据和 Deterministic Fake LLM，不需要 API Key，也不自动执行修复动作。</p>
-        <pre id="supervisorAnswer">等待执行...</pre>
-        <div id="supervisorTrace"></div>
+    <section class="page agent-page" data-page-panel="ops">
+      <button class="back-link" data-go="agents"><svg><use href="#i-back"/></svg> Agents</button>
+      <header class="agent-detail-header">
+        <div class="agent-identity"><div class="agent-icon ops-agent"><svg><use href="#i-activity"/></svg></div><div><div class="title-line"><h1>Ops Agent</h1><span class="status-chip healthy">Active</span></div><p>Infrastructure evidence, diagnostics, and governed actions.</p></div></div>
+        <button class="secondary-btn" id="refreshOps">Refresh snapshot</button>
+      </header>
+      <nav class="detail-tabs"><button class="active">Diagnose</button><button data-agent-tab="runs" data-agent="ops">Runs</button><button data-go="integrations">Integrations</button><button data-agent-tab="settings">Configuration</button></nav>
+
+      <div id="opsMetrics" class="metric-strip agent-metrics"></div>
+      <div class="playground-layout">
+        <section class="playground-main">
+          <div class="conversation-head"><div><strong>Diagnostic workspace</strong><span>Reason over runtime evidence without executing unapproved changes</span></div></div>
+          <div class="conversation">
+            <div class="message user-message"><span>You</span><textarea id="opsQuestion">当前服务器资源状态是否存在明显异常？结合日志和监控数据分析，并说明还需要检查哪些信息。</textarea></div>
+            <div class="message agent-message"><span>Ops Agent</span><div id="opsAnswer" class="answer-placeholder">Run a diagnosis to inspect evidence and recommendations.</div></div>
+          </div>
+          <div class="composer-actions"><button class="primary-btn" id="opsAsk">Run diagnosis</button></div>
+        </section>
+        <aside class="inspector">
+          <div class="inspector-head"><strong>Evidence</strong><span>Runtime sources used by the agent</span></div>
+          <div id="opsTrace" class="trace-stack empty-state">No execution yet.</div>
+          <details class="inspector-details"><summary>Prometheus</summary><div class="inline-control"><input id="promQuery" value="up"><button id="runProm">Run</button></div><pre id="promResult" class="console">No query yet.</pre></details>
+          <details class="inspector-details"><summary>Runtime inventory</summary><div class="button-row"><button class="secondary-btn small" id="loadDocker">Docker</button><button class="secondary-btn small" id="loadK8s">Kubernetes</button></div><pre id="runtimeResult" class="console">Not loaded.</pre></details>
+          <details class="inspector-details"><summary>Logs</summary><button class="secondary-btn small" id="refreshLogs">Read logs</button><pre id="opsLogs" class="console">Not loaded.</pre></details>
+          <details class="inspector-details"><summary>Controlled action</summary><input id="restartService" class="text-input" placeholder="systemd service"><button class="danger-btn small" id="requestRestart">Request restart</button></details>
+        </aside>
       </div>
-      <div class="card">
-        <h3>子 Agent 证据</h3>
-        <div id="supervisorFindings" class="muted">暂无</div>
+    </section>
+
+    <section class="page agent-page" data-page-panel="supervisor">
+      <button class="back-link" data-go="agents"><svg><use href="#i-back"/></svg> Agents</button>
+      <header class="agent-detail-header">
+        <div class="agent-identity"><div class="agent-icon supervisor-agent"><svg><use href="#i-bot"/></svg></div><div><div class="title-line"><h1>Supervisor</h1><span class="status-chip healthy">Guardrails enabled</span></div><p>Cross-agent incident investigation and evidence synthesis.</p></div></div>
+      </header>
+      <nav class="detail-tabs"><button class="active">Investigation</button><button data-agent-tab="runs" data-agent="supervisor">Runs</button><button data-agent-tab="evaluations" data-agent="supervisor">Evaluations</button></nav>
+
+      <div class="supervisor-workspace">
+        <section class="canvas-panel">
+          <div class="canvas-toolbar"><div><strong>Execution graph</strong><span id="graphStatus">Ready</span></div><button class="icon-btn"><svg><use href="#i-more"/></svg></button></div>
+          <div class="agent-graph" id="agentGraph">
+            <button class="graph-node incident success" data-node="incident"><span>Incident</span><strong>User request</strong></button>
+            <div class="connector vertical"></div>
+            <button class="graph-node supervisor-node" data-node="supervisor"><span>Supervisor</span><strong>Orchestrate</strong><small>Policy-aware routing</small></button>
+            <div class="graph-branch"></div>
+            <div class="graph-row">
+              <button class="graph-node" data-node="ops"><span>Ops Agent</span><strong>Runtime evidence</strong><small>Metrics · Logs</small></button>
+              <button class="graph-node" data-node="knowledge"><span>Knowledge Agent</span><strong>Knowledge evidence</strong><small>RAG · Citations</small></button>
+              <button class="graph-node" data-node="data"><span>Data Agent</span><strong>Historical evidence</strong><small>SQL · Analytics</small></button>
+            </div>
+            <div class="graph-merge"></div>
+            <button class="graph-node conclusion" data-node="synthesize"><span>Conclusion</span><strong>Evidence synthesis</strong></button>
+          </div>
+        </section>
+        <aside class="investigation-inspector">
+          <div class="inspector-head"><strong>Investigation</strong><span>Compose and run an incident query</span></div>
+          <label>Historical source<select id="supervisorSource"><option value="default">default</option></select></label>
+          <label>Question<textarea id="supervisorQuestion">为什么最近导入任务失败？请结合当前运维状态、知识库手册和历史数据给出排查结论。</textarea></label>
+          <div class="button-row"><button class="primary-btn" id="supervisorAsk">Start investigation</button><button class="secondary-btn" id="supervisorDemo">Offline demo</button></div>
+          <div class="inspector-divider"></div>
+          <div id="supervisorAnswer" class="answer-placeholder">No investigation yet.</div>
+          <div id="supervisorFindings" class="source-list"></div>
+        </aside>
       </div>
-    </div>
-  </section>
+      <section class="content-section"><div class="section-heading"><div><h2>Execution trace</h2><p>Agent delegation and synthesis steps</p></div></div><div id="supervisorTrace" class="trace-stack empty-state">No trace yet.</div></section>
+    </section>
+
+    <section class="page" data-page-panel="knowledge">
+      <header class="page-header"><div><h1>Knowledge</h1><p>Manage versioned documents and role-scoped access.</p></div><button class="primary-btn" id="openDocForm"><svg><use href="#i-plus"/></svg> Add document</button></header>
+      <div class="toolbar"><div class="filter-search"><svg><use href="#i-search"/></svg><input placeholder="Search documents"></div></div>
+      <div class="data-list-header knowledge-columns"><span>Document</span><span>Version</span><span>Chunks</span><span>Access</span><span>Tags</span><span></span></div>
+      <div id="knowledgeDocs" class="data-list"></div>
+    </section>
+
+    <section class="page" data-page-panel="data-sources">
+      <header class="page-header"><div><h1>Data sources</h1><p>Connections available to Data Agent and Supervisor.</p></div><button class="primary-btn" id="addDataSourceBtn"><svg><use href="#i-plus"/></svg> Add source</button></header>
+      <div id="dataSourceDirectory" class="resource-list large-list"></div>
+    </section>
+
+    <section class="page" data-page-panel="runs">
+      <header class="page-header"><div><h1>Runs</h1><p>Inspect execution, latency, trace, and evaluation results.</p></div></header>
+      <div class="toolbar runs-toolbar">
+        <select id="runAgentFilter"><option value="">All agents</option><option value="data">Data Agent</option><option value="knowledge">Knowledge Agent</option><option value="ops">Ops Agent</option><option value="supervisor">Supervisor</option></select>
+        <select id="runStatusFilter"><option value="">All statuses</option><option value="ok">Success</option><option value="error">Error</option></select>
+        <div class="filter-search grow"><svg><use href="#i-search"/></svg><input id="runSearch" placeholder="Run ID, request ID, correlation ID"></div>
+        <button class="secondary-btn" id="refreshRuns">Refresh</button>
+      </div>
+      <div class="dense-table"><table><thead><tr><th>Status</th><th>Run</th><th>Agent</th><th>Duration</th><th>Request</th><th>Correlation</th><th>Started</th><th></th></tr></thead><tbody id="runsTable"></tbody></table></div>
+    </section>
+
+    <section class="page" data-page-panel="evaluations">
+      <header class="page-header"><div><h1>Evaluations</h1><p>Deterministic quality checks across agent execution paths.</p></div><button class="secondary-btn" id="runRegression">Run regression</button></header>
+      <div id="evalMetrics" class="eval-grid"></div>
+      <section class="content-section"><div class="section-heading"><div><h2>Regression suite</h2><p>Fixed samples with no external LLM dependency</p></div></div><div id="regressionResult" class="empty-state">Run regression to validate the core paths.</div></section>
+    </section>
+
+    <section class="page" data-page-panel="approvals">
+      <header class="page-header"><div><h1>Approvals</h1><p>Review sensitive tool actions before execution.</p></div><button class="secondary-btn" id="refreshApprovals">Refresh</button></header>
+      <div id="approvalCards" class="approval-list"></div>
+    </section>
+
+    <section class="page" data-page-panel="integrations">
+      <header class="page-header"><div><h1>Integrations</h1><p>Connect observability and infrastructure services used by Ops Agent.</p></div></header>
+      <div id="integrationDirectory" class="resource-list large-list"></div>
+    </section>
+
+    <section class="page" data-page-panel="credentials">
+      <header class="page-header"><div><h1>Credentials</h1><p>Manage model provider connections and secrets.</p></div></header>
+      <div id="credentialDirectory" class="resource-list large-list"></div>
+    </section>
+
+    <section class="page" data-page-panel="policies">
+      <header class="page-header"><div><h1>Policies</h1><p>Tool access, risk classification, and approval requirements.</p></div></header>
+      <div class="dense-table"><table><thead><tr><th>Agent</th><th>Tool</th><th>Risk</th><th>Mode</th><th>Approval</th></tr></thead><tbody id="policyTable"></tbody></table></div>
+    </section>
+
+    <section class="page" data-page-panel="settings">
+      <header class="page-header"><div><h1>Settings</h1><p>Runtime defaults, security, and local console preferences.</p></div><button class="primary-btn" id="saveRuntimeSettings">Save changes</button></header>
+      <div class="settings-shell">
+        <nav class="settings-nav"><button class="active" data-settings-section="runtime">Runtime</button><button data-settings-section="security">Security & access</button><button data-settings-section="console">Console</button></nav>
+        <div class="settings-content">
+          <section class="settings-pane active" data-settings-pane="runtime">
+            <div class="settings-block"><div><h2>Agent execution</h2><p>Defaults used across agent runs.</p></div><div class="settings-fields">
+              <label>LLM timeout <span>seconds</span><input id="settingLlmTimeout" type="number" min="1" max="600"></label>
+              <label>Maximum attempts <span>per agent run</span><input id="settingAgentAttempts" type="number" min="1" max="10"></label>
+            </div></div>
+            <div class="settings-block"><div><h2>Knowledge</h2><p>Retrieval and upload limits.</p></div><div class="settings-fields">
+              <label>Retrieval top K <span>documents</span><input id="settingKnowledgeTopK" type="number" min="1" max="100"></label>
+              <label>Maximum upload <span>MB</span><input id="settingKnowledgeUploadMb" type="number" min="1" max="1024"></label>
+            </div></div>
+            <div class="settings-block"><div><h2>Ops</h2><p>Network and command execution timeouts.</p></div><div class="settings-fields">
+              <label>HTTP timeout <span>seconds</span><input id="settingOpsHttpTimeout" type="number" min="1" max="600"></label>
+              <label>Command timeout <span>seconds</span><input id="settingOpsCommandTimeout" type="number" min="1" max="600"></label>
+            </div></div>
+          </section>
+          <section class="settings-pane" data-settings-pane="security">
+            <div class="settings-block"><div><h2>Server</h2><p>Environment and API protection.</p></div><div class="settings-summary">
+              <div><span>Environment</span><strong id="settingAppEnv">—</strong></div><div><span>Authentication</span><strong id="settingAuthEnabled">—</strong></div><div><span>Current user</span><strong id="identityName">—</strong></div><div><span>Role</span><strong id="identityRole">—</strong></div>
+            </div></div>
+            <div class="settings-block"><div><h2>API rate limit</h2><p>Requests per minute for the current process.</p></div><div class="settings-fields single"><label>Rate limit <span>requires restart</span><input id="settingRateLimit" type="number" min="0" max="100000"></label></div></div>
+          </section>
+          <section class="settings-pane" data-settings-pane="console">
+            <div class="settings-block"><div><h2>Browser authentication</h2><p>The bearer token is stored only in this browser.</p></div><div class="settings-fields single"><label>Bearer token <span>localStorage</span><input id="apiToken" type="password" placeholder="Paste bearer token"></label><button class="secondary-btn" id="saveToken">Save browser token</button></div></div>
+          </section>
+        </div>
+      </div>
+      <div id="settingsSaveState" class="save-state"></div>
+    </section>
+  </main>
 </div>
 
-<script>
-const $=id=>document.getElementById(id);
-async function api(url,options={}){
-  const token=$("apiToken")?.value.trim();
-  options.headers={...(token?{Authorization:"Bearer "+token}:{}),...(options.headers||{})};
-  const r=await fetch(url,options), data=await r.json();
-  if(!r.ok){const e=data.error;throw new Error((e?.message||data.detail||JSON.stringify(data))+(e?.request_id?" · request "+e.request_id:""))}
-  return data;
-}
-const post=(url,body)=>api(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-const put=(url,body)=>api(url,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const bytes=n=>n==null?"-":n>1073741824?(n/1073741824).toFixed(1)+" GB":n>1048576?(n/1048576).toFixed(1)+" MB":Math.round(n/1024)+" KB";
-$("apiToken").value=localStorage.getItem("apiToken")||"";
-$("apiToken").onchange=()=>{localStorage.setItem("apiToken",$("apiToken").value.trim());location.reload()};
-async function loadIdentity(){
-  try{const me=await api("/api/v1/auth/me");$("identityStatus").textContent=me.username+" · "+me.role}
-  catch(e){$("identityStatus").textContent=e.message}
-}
+<div class="modal-backdrop hidden" id="docModal">
+  <div class="modal">
+    <header><div><h2>Add knowledge document</h2><p>Upload a file or paste content.</p></div><button class="icon-btn" id="closeDocForm"><svg><use href="#i-x"/></svg></button></header>
+    <div class="modal-body">
+      <label>Document ID <span>Only for updates</span><input id="docId"></label>
+      <label>Title<input id="docTitle"></label>
+      <label>Tags<input id="docTags" placeholder="operations, radar"></label>
+      <label>Allowed roles<input id="docRoles" value="user,operator,approver,admin"></label>
+      <label>File<input id="docFile" type="file" accept=".txt,.md,.csv,.json,.pdf,.docx"></label>
+      <label>Content<textarea id="docContent"></textarea></label>
+      <span id="docStatus" class="muted-label"></span>
+    </div>
+    <footer><button class="secondary-btn" id="cancelDocForm">Cancel</button><button class="primary-btn" id="addDoc">Save document</button></footer>
+  </div>
+</div>
 
-function renderTrace(id,trace=[]){
-  $(id).innerHTML=trace.length?`<h4>Agent Trace</h4><div class="trace">${trace.map(x=>`<div class="trace-item"><span class="${x.status==="error"?"error":"ok"}">${esc(x.kind)}</span><b>${esc(x.name)}</b><span>${esc(x.detail)}</span></div>`).join("")}</div>`:"";
-}
-function renderChart(chart){
-  if(!chart){$("dataChart").innerHTML="";return}
-  const max=Math.max(...chart.values.map(x=>Math.abs(x)),1);
-  $("dataChart").innerHTML=`<h4>自动图表</h4><div class="bars">${chart.labels.map((label,i)=>`<div class="bar-row"><span>${esc(label)}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,Math.abs(chart.values[i])/max*100)}%"></div></div><b>${esc(chart.values[i])}</b></div>`).join("")}</div><p class="muted">${esc(chart.y_column)} by ${esc(chart.x_column)}</p>`;
-}
-function renderTable(data){
-  if(!data.rows.length){$("table").textContent="无数据";return}
-  const head=data.columns.map(x=>`<th>${esc(x)}</th>`).join("");
-  const rows=data.rows.map(r=>`<tr>${data.columns.map(c=>`<td>${esc(r[c])}</td>`).join("")}</tr>`).join("");
-  $("table").innerHTML=`<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table><p class="muted">${data.row_count} 行${data.truncated?"（已截断）":""}</p>`;
-}
-async function loadSources(){
-  try{
-    const sources=await api("/api/v1/data/sources");
-    const options=sources.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}${x.schema_name?" · "+esc(x.schema_name):""}</option>`).join("");
-    $("dataSource").innerHTML=options;
-    $("supervisorSource").innerHTML=options;
-  }catch(e){}
-}
-async function loadSchema(){
-  try{
-    const s=await api("/api/v1/data/schema?source="+encodeURIComponent($("dataSource").value));
-    $("schema").innerHTML=s.tables.map(t=>`<p><b>${esc(t.name)}</b><br><span class="muted">${t.columns.map(c=>esc(c.name)+" : "+esc(c.type)).join("<br>")}</span></p>`).join("");
-  }catch(e){$("schema").textContent=e.message}
-}
-async function loadKnowledgeDocs(){
-  try{
-    const docs=await api("/api/v1/knowledge/documents");
-    $("knowledgeDocs").innerHTML=docs.length?docs.map(x=>`<p><b>${esc(x.title)}</b><br><span class="muted">#${x.document_id} · v${x.version} · ${x.chunks} chunks${x.tags?.length?" · "+esc(x.tags.join(",")):""} · roles ${esc((x.allowed_roles||[]).join(","))}</span><br><button class="secondary" data-request-delete="${x.document_id}" data-title="${esc(x.title)}" style="margin-top:6px">申请删除</button></p>`).join(""):"暂无文档";
-    $("knowledgeDocs").querySelectorAll("[data-request-delete]").forEach(button=>button.onclick=()=>requestDocumentDelete(button.dataset.requestDelete,button.dataset.title));
-  }catch(e){$("knowledgeDocs").textContent=e.message}
-}
-async function requestDocumentDelete(documentId,title){
-  try{
-    await post("/api/v1/platform/approvals",{
-      agent:"knowledge",
-      tool:"document_delete",
-      target:"document:"+documentId,
-      reason:"删除知识文档："+title
-    });
-    loadApprovals();
-  }catch(e){alert(e.message)}
-}
-async function loadApprovals(){
-  try{
-    const items=await api("/api/v1/platform/approvals?limit=20");
-    $("approvals").innerHTML=items.length?items.map(x=>{
-      const actions=x.status==="pending"?`<button class="secondary" data-approve="${x.id}">批准</button> <button class="secondary" data-reject="${x.id}">拒绝</button>`:
-        x.status==="approved"&&x.tool==="document_delete"?`<button class="secondary" data-execute-delete="${x.id}" data-target="${esc(x.target)}">执行删除</button>`:
-        x.status==="approved"&&x.tool==="service_restart"?`<button class="secondary" data-execute-restart="${x.id}" data-target="${esc(x.target)}">执行重启</button>`:"";
-      return `<p><b>#${x.id} · ${esc(x.tool)}</b> · <span class="${x.status==="rejected"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${esc(x.target)} · ${esc(x.reason)} · requester ${esc(x.requested_by||"-")}${x.actor?" · approver "+esc(x.actor):""}${x.consumed_by?" · executor "+esc(x.consumed_by):""}</span><br>${actions}</p>`;
-    }).join(""):"暂无审批";
-    $("approvals").querySelectorAll("[data-approve]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.approve,"approved"));
-    $("approvals").querySelectorAll("[data-reject]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.reject,"rejected"));
-    $("approvals").querySelectorAll("[data-execute-delete]").forEach(button=>button.onclick=()=>executeDocumentDelete(button.dataset.executeDelete,button.dataset.target));
-    $("approvals").querySelectorAll("[data-execute-restart]").forEach(button=>button.onclick=()=>executeServiceRestart(button.dataset.executeRestart,button.dataset.target));
-  }catch(e){$("approvals").textContent=e.message}
-}
-async function requestServiceRestart(service){
-  try{
-    await post("/api/v1/platform/approvals",{agent:"ops",tool:"service_restart",target:"service:"+service,reason:"重启白名单服务 "+service});
-    loadApprovals();
-  }catch(e){alert(e.message)}
-}
-async function decideApproval(id,decision){
-  try{
-    await post("/api/v1/platform/approvals/"+id+"/decision",{decision});
-    loadApprovals();
-  }catch(e){alert(e.message)}
-}
-async function executeServiceRestart(approvalId,target){
-  const service=String(target).split(":")[1];
-  try{
-    await post("/api/v1/ops/services/"+encodeURIComponent(service)+"/restart?approval_id="+encodeURIComponent(approvalId),{});
-    loadApprovals();loadOps();
-  }catch(e){alert(e.message)}
-}
-async function executeDocumentDelete(approvalId,target){
-  const documentId=String(target).split(":")[1];
-  try{
-    await api("/api/v1/knowledge/documents/"+encodeURIComponent(documentId)+"?approval_id="+encodeURIComponent(approvalId),{method:"DELETE"});
-    loadApprovals();loadKnowledgeDocs();
-  }catch(e){alert(e.message)}
-}
-async function loadToolPolicies(){
-  try{
-    const policies=await api("/api/v1/platform/tools");
-    $("toolPolicies").innerHTML=policies.map(x=>`<span class="chip">${esc(x.agent)} · ${esc(x.name)} · ${esc(x.risk)} · ${esc(x.mode)}</span>`).join("");
-  }catch(e){$("toolPolicies").textContent=e.message}
-}
-async function loadRuns(){
-  try{
-    const [runs,evals,metrics]=await Promise.all([
-      api("/api/v1/platform/runs?limit=8"),
-      api("/api/v1/platform/evals?limit=20"),
-      api("/api/v1/platform/metrics")
-    ]);
-    $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><button class="run-link" data-run-id="${x.id}">#${x.id}</button> · <b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}${x.request_id?" · req "+esc(x.request_id.slice(0,8)):""}${x.correlation_id?" · corr "+esc(x.correlation_id):""}</span></p>`).join(""):"暂无运行记录";
-    $("recentRuns").querySelectorAll("[data-run-id]").forEach(button=>button.onclick=()=>loadRunDetail(button.dataset.runId));
-    if(evals.length){
-      const passed=evals.filter(x=>x.passed).length;
-      const avg=Math.round(evals.reduce((sum,x)=>sum+x.score,0)/evals.length);
-      $("evalSummary").innerHTML=`<span class="chip">Eval ${passed}/${evals.length} pass</span><span class="chip">avg ${avg}</span>`;
-    }else{
-      $("evalSummary").innerHTML='<span class="chip">Eval 暂无样本</span>';
-    }
-    $("qualityMetrics").innerHTML=metrics.length?metrics.map(x=>`<p><b>${esc(x.agent)}</b><br><span class="muted">${x.runs} runs · success ${x.success_rate}% · avg ${x.avg_duration_ms} ms · P50 ${x.p50_duration_ms} ms · P95 ${x.p95_duration_ms} ms · eval ${x.eval_avg_score} · eval pass ${x.eval_pass_rate}%${Object.keys(x.error_types||{}).length?" · errors "+esc(JSON.stringify(x.error_types)):""}</span></p>`).join(""):"";
-  }catch(e){$("recentRuns").textContent=e.message}
-}
-async function loadRunDetail(id){
-  $("runDetail").textContent="加载 Run #"+id+"...";
-  try{
-    const d=await api("/api/v1/platform/runs/"+encodeURIComponent(id));
-    const run=d.run, ev=d.eval;
-    const trace=run.trace.length?run.trace.map(x=>`<div class="trace-item"><span class="${x.status==="error"?"error":"ok"}">${esc(x.kind)}</span><b>${esc(x.name)}</b><span>${esc(x.detail)}</span></div>`).join(""):'<span class="muted">无 Trace；失败类型：'+esc(run.error_type||"-")+'</span>';
-    const checks=ev.checks.map(x=>`<span class="${x.passed?"ok":"error"}">${x.passed?"PASS":"FAIL"}</span> ${esc(x.name)} · ${esc(x.detail)}`).join("<br>");
-    $("runDetail").innerHTML=`<b>Run #${run.id} · ${esc(run.agent)}</b><br><span class="muted">${esc(run.status)} · ${run.duration_ms} ms · Eval ${ev.score}${run.request_id?" · request "+esc(run.request_id):""}${run.correlation_id?" · correlation "+esc(run.correlation_id):""}</span><div class="trace" style="margin-top:10px">${trace}</div><div style="margin-top:10px">${checks}</div>`;
-  }catch(e){$("runDetail").textContent=e.message}
-}
-async function loadOps(){
-  try{
-    const d=await api("/api/v1/ops/snapshot"), m=d.memory||{}, disk=d.disk||{};
-    $("metrics").innerHTML=[
-      ["CPU",d.cpu_count??"-"],
-      ["Load",d.load_average?d.load_average.map(x=>x.toFixed(2)).join(" / "):"-"],
-      ["可用内存",bytes(m.MemAvailable)],
-      ["总内存",bytes(m.MemTotal)],
-      ["磁盘可用",bytes(disk.free)],
-      ["Hostname",d.hostname||"-"]
-    ].map(x=>`<div class="metric"><span class="muted">${esc(x[0])}</span><b>${esc(x[1])}</b></div>`).join("");
-  }catch(e){$("metrics").textContent=e.message}
-}
-async function loadLogs(){
-  $("opsLogs").textContent="读取中...";
-  try{
-    const logs=await api("/api/v1/ops/logs?lines=80");
-    $("opsLogs").textContent=logs.length?logs.map(x=>"== "+x.path+" ==\n"+x.lines.join("\n")).join("\n\n"):"未配置 OPS_LOG_FILES";
-  }catch(e){$("opsLogs").textContent=e.message}
-}
+<div class="modal-backdrop hidden" id="providerModal">
+  <div class="modal">
+    <header><div><h2>Configure model provider</h2><p>OpenAI-compatible Chat Completions and Embeddings.</p></div><button class="icon-btn" data-close-modal="providerModal"><svg><use href="#i-x"/></svg></button></header>
+    <div class="modal-body">
+      <label>API base URL<input id="settingLlmBaseUrl" placeholder="https://api.openai.com/v1"></label>
+      <label>API key <span id="apiKeyState">Not configured</span><input id="settingLlmApiKey" type="password" placeholder="Leave blank to keep current key"></label>
+      <div class="two-fields"><label>Chat model<input id="settingLlmModel" placeholder="gpt-5.6"></label><label>Embedding model<input id="settingEmbeddingModel" placeholder="text-embedding-3-small"></label></div>
+      <div id="modelTestResult" class="muted-label"></div>
+    </div>
+    <footer><button class="secondary-btn" id="testChatModel">Test chat</button><button class="secondary-btn" id="testEmbeddingModel">Test embedding</button><button class="primary-btn" id="saveProviderSettings">Save connection</button></footer>
+  </div>
+</div>
 
-document.querySelectorAll(".tab").forEach(button=>button.onclick=()=>{
-  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
-  button.classList.add("active");$("panel-"+button.dataset.tab).classList.add("active");
-});
+<div class="modal-backdrop hidden" id="dataSourceModal">
+  <div class="modal">
+    <header><div><h2 id="dataSourceModalTitle">Configure data source</h2><p>Connections are used for read-only agent analytics.</p></div><button class="icon-btn" data-close-modal="dataSourceModal"><svg><use href="#i-x"/></svg></button></header>
+    <div class="modal-body">
+      <label>Name <span>default is reserved</span><input id="sourceName" placeholder="analytics"></label>
+      <label>Database URL<input id="settingDatabaseUrl" placeholder="postgresql+psycopg://user:pass@host/db"></label>
+      <div class="two-fields"><label>Schema<input id="settingDatabaseSchema" placeholder="public"></label><label>Max result rows<input id="settingSqlMaxRows" type="number" min="1" max="10000"></label></div>
+      <label>SQL timeout <span>seconds</span><input id="settingSqlTimeout" type="number" min="1" max="600"></label>
+    </div>
+    <footer><button class="danger-btn hidden" id="deleteDataSource">Delete source</button><span class="footer-spacer"></span><button class="secondary-btn" data-close-modal="dataSourceModal">Cancel</button><button class="primary-btn" id="saveDataSource">Save source</button></footer>
+  </div>
+</div>
 
-$("dataSource").onchange=loadSchema;
-$("runSql").onclick=async()=>{
-  $("table").textContent="执行中...";
-  try{renderTable(await post("/api/v1/data/sql",{sql:$("sql").value,source:$("dataSource").value}))}catch(e){$("table").textContent=e.message}
-};
-let lastReport="";
-$("dataAsk").onclick=async()=>{
-  $("dataAnswer").textContent="Agent 分析中...";
-  try{
-    const d=await post("/api/v1/data/ask",{question:$("dataQuestion").value,source:$("dataSource").value});
-    $("dataAnswer").textContent=d.answer+"\n\n"+d.insights.map(x=>"• "+x).join("\n")+"\n\nSQL:\n"+d.sql;
-    lastReport=d.report_markdown||"";
-    $("downloadReport").disabled=!lastReport;
-    renderTable(d.result);renderChart(d.chart);renderTrace("dataTrace",d.trace);
-  }catch(e){$("dataAnswer").textContent=e.message}
-  finally{loadRuns()}
-};
-$("downloadReport").onclick=()=>{
-  if(!lastReport)return;
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([lastReport],{type:"text/markdown;charset=utf-8"}));
-  a.download="data-agent-report.md";a.click();URL.revokeObjectURL(a.href);
-};
-$("docFile").onchange=async e=>{
-  const f=e.target.files[0]; if(!f)return;
-  $("docTitle").value=$("docTitle").value||f.name;
-  if(/\.(txt|md|csv|json)$/i.test(f.name))$("docContent").value=await f.text();
-  else $("docContent").value="";
-};
-$("addDoc").onclick=async()=>{
-  $("docStatus").textContent="写入中...";
-  try{
-    const file=$("docFile").files[0];
-    let d;
-    const tags=$("docTags").value.split(",").map(x=>x.trim()).filter(Boolean);
-    const roles=$("docRoles").value.split(",").map(x=>x.trim()).filter(Boolean);
-    if(file){
-      const form=new FormData();form.append("file",file);form.append("tags",tags.join(","));form.append("allowed_roles",roles.join(","));
-      d=await api("/api/v1/knowledge/documents/upload",{method:"POST",body:form});
-    }else if($("docId").value.trim()){
-      d=await put("/api/v1/knowledge/documents/"+encodeURIComponent($("docId").value.trim()),{title:$("docTitle").value,content:$("docContent").value,tags,allowed_roles:roles});
-    }else{
-      d=await post("/api/v1/knowledge/documents",{title:$("docTitle").value,content:$("docContent").value,tags,allowed_roles:roles});
-    }
-    $("docStatus").textContent="已写入，document_id="+d.document_id+(d.version?"，version="+d.version:"");
-    loadKnowledgeDocs();
-  }catch(e){$("docStatus").textContent=e.message}
-};
-$("knowledgeAsk").onclick=async()=>{
-  $("knowledgeAnswer").textContent="检索中...";
-  try{
-    const d=await post("/api/v1/knowledge/ask",{question:$("knowledgeQuestion").value});
-    $("knowledgeAnswer").textContent=d.answer;
-    $("sources").innerHTML=d.sources.length?d.sources.map((s,i)=>`<div class="source"><b>[来源 ${i+1}] ${esc(s.title)}</b><p>${esc(s.text)}</p><span class="muted">score ${Number(s.score).toFixed(3)}</span></div>`).join(""):"暂无来源";
-    renderTrace("knowledgeTrace",d.trace);
-  }catch(e){$("knowledgeAnswer").textContent=e.message}
-  finally{loadRuns()}
-};
-$("refreshApprovals").onclick=loadApprovals;
-$("refreshRuns").onclick=loadRuns;
-$("runRegression").onclick=async()=>{
-  $("regressionResult").textContent="运行中...";
-  try{
-    const d=await post("/api/v1/platform/regression/run",{});
-    $("regressionResult").innerHTML=`<b class="${d.passed?"ok":"error"}">${d.passed?"PASS":"FAIL"} · ${d.passed_cases}/${d.total_cases}</b><br>${d.cases.map(x=>`<span class="${x.passed?"ok":"error"}">${x.passed?"PASS":"FAIL"}</span> ${esc(x.agent)} · ${esc(x.id)} · ${esc(x.detail)}`).join("<br>")}`;
-  }catch(e){$("regressionResult").textContent=e.message}
-};
-$("requestRestart").onclick=()=>{const service=$("restartService").value.trim();if(service)requestServiceRestart(service)};
-$("refreshOps").onclick=loadOps;
-$("refreshLogs").onclick=loadLogs;
-$("runProm").onclick=async()=>{
-  $("promResult").textContent="查询中...";
-  try{
-    const d=await post("/api/v1/ops/prometheus/query",{query:$("promQuery").value});
-    $("promResult").textContent=JSON.stringify(d.result,null,2);
-  }catch(e){$("promResult").textContent=e.message}
-};
-$("loadDocker").onclick=async()=>{
-  $("runtimeResult").textContent="读取 Docker...";
-  try{$("runtimeResult").textContent=JSON.stringify((await api("/api/v1/ops/docker")).items,null,2)}
-  catch(e){$("runtimeResult").textContent=e.message}
-};
-$("loadK8s").onclick=async()=>{
-  $("runtimeResult").textContent="读取 Kubernetes...";
-  try{$("runtimeResult").textContent=JSON.stringify((await api("/api/v1/ops/kubernetes")).items,null,2)}
-  catch(e){$("runtimeResult").textContent=e.message}
-};
-function renderSupervisorResult(d){
-  $("supervisorAnswer").textContent=d.answer;
-  $("supervisorFindings").innerHTML=d.findings.map(x=>`<div class="source"><b class="${x.status==="error"?"error":"ok"}">${esc(x.agent)} · ${esc(x.status)}</b><p>${esc(x.summary)}</p></div>`).join("");
-  renderTrace("supervisorTrace",d.trace);
-}
-$("supervisorAsk").onclick=async()=>{
-  $("supervisorAnswer").textContent="Supervisor 调查中...";
-  $("supervisorFindings").textContent="等待子 Agent...";
-  try{
-    renderSupervisorResult(await post("/api/v1/supervisor/investigate",{question:$("supervisorQuestion").value,source:$("supervisorSource").value}));
-  }catch(e){$("supervisorAnswer").textContent=e.message}
-  finally{loadRuns()}
-};
-$("supervisorDemo").onclick=async()=>{
-  $("supervisorAnswer").textContent="运行隔离离线 Demo...";
-  $("supervisorFindings").textContent="构建临时数据、知识库和模拟日志...";
-  try{
-    const d=await post("/api/v1/platform/demo/incident",{});
-    renderSupervisorResult(d.answer);
-    $("supervisorQuestion").value=d.answer.question;
-  }catch(e){$("supervisorAnswer").textContent=e.message}
-  finally{loadRuns()}
-};
-$("opsAsk").onclick=async()=>{
-  $("opsAnswer").textContent="诊断中...";
-  try{
-    const d=await post("/api/v1/ops/diagnose",{question:$("opsQuestion").value});
-    $("opsAnswer").textContent=d.answer;renderTrace("opsTrace",d.trace);loadOps();
-    if(d.logs?.length)$("opsLogs").textContent=d.logs.map(x=>"== "+x.path+" ==\n"+x.lines.join("\n")).join("\n\n");
-    if(d.prometheus)$("promResult").textContent=JSON.stringify(d.prometheus.result,null,2);
-    if(d.docker)$("runtimeResult").textContent="Docker\n"+JSON.stringify(d.docker.items,null,2);
-    if(d.kubernetes)$("runtimeResult").textContent+=($("runtimeResult").textContent?"\n\n":"")+"Kubernetes\n"+JSON.stringify(d.kubernetes.items,null,2);
-  }catch(e){$("opsAnswer").textContent=e.message}
-  finally{loadRuns()}
-};
+<div class="modal-backdrop hidden" id="integrationModal">
+  <div class="modal">
+    <header><div><h2 id="integrationTitle">Configure integration</h2><p id="integrationSubtitle">Ops Agent integration.</p></div><button class="icon-btn" data-close-modal="integrationModal"><svg><use href="#i-x"/></svg></button></header>
+    <div class="modal-body" id="integrationFields"></div>
+    <footer><button class="secondary-btn" data-close-modal="integrationModal">Cancel</button><button class="primary-btn" id="saveIntegration">Save integration</button></footer>
+  </div>
+</div>
 
-(async()=>{
-  try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
-  await loadIdentity();loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadApprovals();loadRuns();loadOps();
-})();
-</script>
+<div class="drawer-backdrop hidden" id="runDrawer">
+  <aside class="drawer">
+    <header><div><span>RUN INSPECTOR</span><h2 id="runDrawerTitle">Run</h2></div><button class="icon-btn" id="closeRunDrawer"><svg><use href="#i-x"/></svg></button></header>
+    <div id="runDrawerBody"></div>
+  </aside>
+</div>
+
+<div class="command-backdrop hidden" id="commandPalette">
+  <div class="command-modal">
+    <div class="command-input"><svg><use href="#i-search"/></svg><input id="commandInput" placeholder="Search or jump to…"><kbd>Esc</kbd></div>
+    <div id="commandResults" class="command-results"></div>
+  </div>
+</div>
+
+<script src="/static/app.js?v=20260928-3"></script>
 </body>
 </html>
