@@ -8,6 +8,7 @@ from app.api.data import db, router as data_router
 from app.api.knowledge import router as knowledge_router
 from app.api.ops import router as ops_router
 from app.api.platform import router as platform_router
+from app.api.supervisor import router as supervisor_router
 from app.core.config import get_settings
 from app.db.demo import initialize_demo_database
 from app.platform.auth import current_identity
@@ -18,7 +19,7 @@ initialize_demo_database(db)
 
 app = FastAPI(title=settings.app_name)
 app.include_router(auth_router)
-for router in (data_router, knowledge_router, ops_router, platform_router):
+for router in (data_router, knowledge_router, ops_router, platform_router, supervisor_router):
     app.include_router(router, dependencies=[Depends(current_identity)])
 
 

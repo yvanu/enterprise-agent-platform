@@ -36,6 +36,7 @@
     <button class="tab active" data-tab="data">Data Agent</button>
     <button class="tab" data-tab="knowledge">Knowledge Agent</button>
     <button class="tab" data-tab="ops">Ops Agent</button>
+    <button class="tab" data-tab="supervisor">Supervisor</button>
   </nav>
 
   <div class="grid">
@@ -192,6 +193,26 @@ ORDER BY total DESC</textarea>
       </div>
     </div>
   </section>
+
+  <section class="panel" id="panel-supervisor">
+    <div class="grid">
+      <div class="card">
+        <h3>跨 Agent 故障调查</h3>
+        <label class="muted" for="supervisorSource">历史数据源</label>
+        <select id="supervisorSource"><option value="default">default</option></select>
+        <div style="height:10px"></div>
+        <textarea id="supervisorQuestion">为什么最近导入任务失败？请结合当前运维状态、知识库手册和历史数据给出排查结论。</textarea>
+        <div class="actions"><button id="supervisorAsk">开始调查</button></div>
+        <p class="muted">Supervisor 只编排三个只读 Agent，不自动执行修复动作。</p>
+        <pre id="supervisorAnswer">等待执行...</pre>
+        <div id="supervisorTrace"></div>
+      </div>
+      <div class="card">
+        <h3>子 Agent 证据</h3>
+        <div id="supervisorFindings" class="muted">暂无</div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -231,7 +252,9 @@ function renderTable(data){
 async function loadSources(){
   try{
     const sources=await api("/api/v1/data/sources");
-    $("dataSource").innerHTML=sources.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}${x.schema_name?" · "+esc(x.schema_name):""}</option>`).join("");
+    const options=sources.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}${x.schema_name?" · "+esc(x.schema_name):""}</option>`).join("");
+    $("dataSource").innerHTML=options;
+    $("supervisorSource").innerHTML=options;
   }catch(e){}
 }
 async function loadSchema(){
@@ -447,6 +470,17 @@ $("loadK8s").onclick=async()=>{
   $("runtimeResult").textContent="读取 Kubernetes...";
   try{$("runtimeResult").textContent=JSON.stringify((await api("/api/v1/ops/kubernetes")).items,null,2)}
   catch(e){$("runtimeResult").textContent=e.message}
+};
+$("supervisorAsk").onclick=async()=>{
+  $("supervisorAnswer").textContent="Supervisor 调查中...";
+  $("supervisorFindings").textContent="等待子 Agent...";
+  try{
+    const d=await post("/api/v1/supervisor/investigate",{question:$("supervisorQuestion").value,source:$("supervisorSource").value});
+    $("supervisorAnswer").textContent=d.answer;
+    $("supervisorFindings").innerHTML=d.findings.map(x=>`<div class="source"><b class="${x.status==="error"?"error":"ok"}">${esc(x.agent)} · ${esc(x.status)}</b><p>${esc(x.summary)}</p></div>`).join("");
+    renderTrace("supervisorTrace",d.trace);
+  }catch(e){$("supervisorAnswer").textContent=e.message}
+  finally{loadRuns()}
 };
 $("opsAsk").onclick=async()=>{
   $("opsAnswer").textContent="诊断中...";

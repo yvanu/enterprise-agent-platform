@@ -1,6 +1,6 @@
 # Enterprise Agent Platform
 
-面向企业场景的多 Agent 平台。三个业务 Agent 共用同一套 LLM Runtime、配置、Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务。
+面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。
 
 ## 三个 Agent
 
@@ -56,7 +56,8 @@ app/
 ├── agents/
 │   ├── data/
 │   ├── knowledge/
-│   └── ops/
+│   ├── ops/
+│   └── supervisor/     # 跨 Agent 故障调查编排
 ├── platform/
 │   ├── llm.py          # Chat + Embedding，共享 Runtime
 │   ├── policy.py       # Tool 风险与权限清单
@@ -77,7 +78,7 @@ app/
 └── main.py
 ```
 
-暂不增加 Supervisor。出现真实跨 Agent 协同需求时再加。
+Supervisor 已在真实故障调查链路中启用：Ops 获取当前运行证据，Knowledge 检索运维手册，Data 查询历史业务数据，最后由 Supervisor 汇总结论。它只编排只读分析能力，不绕过各 Agent 的 Tool Policy，也不会自动执行修复动作。
 
 ```mermaid
 flowchart LR
@@ -85,6 +86,10 @@ flowchart LR
   AUTH --> DATA[Data Agent]
   AUTH --> KNOW[Knowledge Agent]
   AUTH --> OPS[Ops Agent]
+  AUTH --> SUP[Supervisor]
+  SUP --> OPS
+  SUP --> KNOW
+  SUP --> DATA
   DATA --> POLICY[Tool Policy]
   KNOW --> POLICY
   OPS --> POLICY
@@ -197,6 +202,9 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 - `PUT /api/v1/knowledge/documents/{document_id}`：增量更新文档并递增版本
 - `POST /api/v1/knowledge/documents/upload`
 - `POST /api/v1/knowledge/ask`
+
+### Supervisor
+- `POST /api/v1/supervisor/investigate`：`operator/admin` 执行 Ops → Knowledge → Data → 综合结论的只读故障调查
 
 ### Ops
 - `GET /api/v1/ops/snapshot`

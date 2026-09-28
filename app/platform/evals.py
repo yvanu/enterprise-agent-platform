@@ -9,6 +9,7 @@ REQUIRED_STEPS = {
     "data": {"schema", "generate_sql", "database_query", "summarize", "presentation"},
     "knowledge": {"knowledge_search", "answer_with_context"},
     "ops": {"system_snapshot", "diagnose"},
+    "supervisor": {"delegate_ops", "delegate_knowledge", "delegate_data", "synthesize"},
 }
 
 

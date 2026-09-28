@@ -36,6 +36,18 @@ def test_eval_fails_missing_step_and_error_run():
     assert failed.passed is False
 
 
+def test_supervisor_eval_passes_complete_trace():
+    result = evaluate_run(
+        _run(
+            "supervisor",
+            ["delegate_ops", "delegate_knowledge", "delegate_data", "synthesize"],
+        )
+    )
+
+    assert result.passed is True
+    assert result.score == 100
+
+
 def test_quality_metrics_group_by_agent():
     complete = ["schema", "generate_sql", "database_query", "summarize", "presentation"]
     runs = [
