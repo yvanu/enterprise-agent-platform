@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Added Web/API one-click isolated incident demo backed by the actual Data, Knowledge, Ops, and Supervisor code paths.
+- Offline demo now records a Supervisor Run/Trace while keeping temporary demo data isolated.
+
 ## v0.1.0
 
 First portfolio-ready release of Enterprise Agent Platform.

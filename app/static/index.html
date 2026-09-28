@@ -209,8 +209,8 @@ ORDER BY total DESC</textarea>
         <select id="supervisorSource"><option value="default">default</option></select>
         <div style="height:10px"></div>
         <textarea id="supervisorQuestion">为什么最近导入任务失败？请结合当前运维状态、知识库手册和历史数据给出排查结论。</textarea>
-        <div class="actions"><button id="supervisorAsk">开始调查</button></div>
-        <p class="muted">Supervisor 只编排三个只读 Agent，不自动执行修复动作。</p>
+        <div class="actions"><button id="supervisorAsk">开始调查</button><button class="secondary" id="supervisorDemo">一键离线 Demo</button></div>
+        <p class="muted">实时调查使用已配置 LLM；离线 Demo 使用隔离临时数据和 Deterministic Fake LLM，不需要 API Key，也不自动执行修复动作。</p>
         <pre id="supervisorAnswer">等待执行...</pre>
         <div id="supervisorTrace"></div>
       </div>
@@ -478,14 +478,26 @@ $("loadK8s").onclick=async()=>{
   try{$("runtimeResult").textContent=JSON.stringify((await api("/api/v1/ops/kubernetes")).items,null,2)}
   catch(e){$("runtimeResult").textContent=e.message}
 };
+function renderSupervisorResult(d){
+  $("supervisorAnswer").textContent=d.answer;
+  $("supervisorFindings").innerHTML=d.findings.map(x=>`<div class="source"><b class="${x.status==="error"?"error":"ok"}">${esc(x.agent)} · ${esc(x.status)}</b><p>${esc(x.summary)}</p></div>`).join("");
+  renderTrace("supervisorTrace",d.trace);
+}
 $("supervisorAsk").onclick=async()=>{
   $("supervisorAnswer").textContent="Supervisor 调查中...";
   $("supervisorFindings").textContent="等待子 Agent...";
   try{
-    const d=await post("/api/v1/supervisor/investigate",{question:$("supervisorQuestion").value,source:$("supervisorSource").value});
-    $("supervisorAnswer").textContent=d.answer;
-    $("supervisorFindings").innerHTML=d.findings.map(x=>`<div class="source"><b class="${x.status==="error"?"error":"ok"}">${esc(x.agent)} · ${esc(x.status)}</b><p>${esc(x.summary)}</p></div>`).join("");
-    renderTrace("supervisorTrace",d.trace);
+    renderSupervisorResult(await post("/api/v1/supervisor/investigate",{question:$("supervisorQuestion").value,source:$("supervisorSource").value}));
+  }catch(e){$("supervisorAnswer").textContent=e.message}
+  finally{loadRuns()}
+};
+$("supervisorDemo").onclick=async()=>{
+  $("supervisorAnswer").textContent="运行隔离离线 Demo...";
+  $("supervisorFindings").textContent="构建临时数据、知识库和模拟日志...";
+  try{
+    const d=await post("/api/v1/platform/demo/incident",{});
+    renderSupervisorResult(d.answer);
+    $("supervisorQuestion").value=d.answer.question;
   }catch(e){$("supervisorAnswer").textContent=e.message}
   finally{loadRuns()}
 };

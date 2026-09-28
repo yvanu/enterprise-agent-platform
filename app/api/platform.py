@@ -10,10 +10,11 @@ from app.platform.approvals import (
     approval_store,
 )
 from app.platform.auth import Identity, require_roles
+from app.demo.incident import DemoIncidentResponse, run_demo
 from app.platform.evals import AgentQualityMetric, EvalResult, evaluate_run, evaluate_runs, summarize_quality
 from app.platform.policy import ToolPolicy, ToolPolicyError, tool_policies
 from app.platform.regression import RegressionReport, run_regression_suite
-from app.platform.runs import RunRecord, run_store
+from app.platform.runs import RunRecord, run_store, start_run
 
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
@@ -115,6 +116,20 @@ def decide_approval(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/demo/incident", response_model=DemoIncidentResponse)
+def demo_incident(
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> dict:
+    run = start_run("supervisor")
+    try:
+        answer = run_demo()
+        run.success(answer.trace)
+        return DemoIncidentResponse(answer=answer)
+    except Exception as exc:
+        run.error(exc)
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/regression/run", response_model=RegressionReport)

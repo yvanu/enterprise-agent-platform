@@ -31,6 +31,8 @@ docker compose up --build
 
 Open `http://127.0.0.1:8000/`.
 
+In the Supervisor tab, **一键离线 Demo** runs the same isolated scenario through `POST /api/v1/platform/demo/incident`; it works even when no external LLM is configured and records the Supervisor Run/Trace for inspection.
+
 When `AUTH_ENABLED=false`, the demo runs as `development/admin`.
 
 For an RBAC demo, set:

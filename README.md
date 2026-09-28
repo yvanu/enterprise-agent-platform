@@ -111,6 +111,8 @@ flowchart LR
 python scripts/demo_incident.py
 ```
 
+Web 的 Supervisor 页签也提供“一键离线 Demo”，对应接口为 `POST /api/v1/platform/demo/incident`。离线 Demo 使用临时 SQLite、临时知识库和模拟日志，执行完成后只保留 Run/Trace 元数据。
+
 脚本使用临时 SQLite、固定知识库、模拟超时日志和 Deterministic Fake LLM，实际经过 Data / Knowledge / Ops / Supervisor 的正式业务代码，不访问外部服务，也不会改生产数据。需要机器可读结果时使用：
 
 ```bash
@@ -207,6 +209,7 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 - `GET /api/v1/platform/approvals`：`operator/approver/admin` 查看审批记录
 - `POST /api/v1/platform/approvals`：`operator/admin` 为需要审批的 Tool 创建审批请求
 - `POST /api/v1/platform/approvals/{id}/decision`：`approver/admin` 批准或拒绝审批请求
+- `POST /api/v1/platform/demo/incident`：`operator/admin` 一键运行隔离的跨 Agent 标准 Demo
 - `POST /api/v1/platform/regression/run`：运行隔离的固定业务样本回归测试
 
 ### Data

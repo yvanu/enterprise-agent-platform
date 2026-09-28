@@ -1,4 +1,4 @@
-from scripts.demo_incident import run_demo
+from app.demo.incident import run_demo
 
 
 def test_offline_incident_demo():
