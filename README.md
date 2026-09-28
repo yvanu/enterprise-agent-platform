@@ -1,5 +1,9 @@
 # Enterprise Agent Platform
 
+[![CI](https://github.com/yvanu/enterprise-agent-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/yvanu/enterprise-agent-platform/actions/workflows/ci.yml)
+
+[Architecture](docs/ARCHITECTURE.md) · [Demo Guide](docs/DEMO.md) · [Interview Guide](docs/INTERVIEW.md)
+
 面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。
 
 ## 业务 Agent 与 Supervisor
@@ -113,7 +117,7 @@ python scripts/demo_incident.py
 python scripts/demo_incident.py --json
 ```
 
-简历表述、5 分钟演示路径、核心设计取舍和常见面试问题见 [`docs/INTERVIEW.md`](docs/INTERVIEW.md)。
+完整系统边界与时序图见 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，Web/审批/Supervisor 演示步骤见 [`docs/DEMO.md`](docs/DEMO.md)，简历表述、设计取舍和常见面试问题见 [`docs/INTERVIEW.md`](docs/INTERVIEW.md)。
 
 ## 身份认证与 RBAC
 

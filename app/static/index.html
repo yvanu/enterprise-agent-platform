@@ -16,9 +16,9 @@
     pre{background:#101828;color:#e4e7ec;border-radius:10px;padding:14px;overflow:auto;white-space:pre-wrap;min-height:90px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px;border-bottom:1px solid #eaecf0}th{color:#475467}
     .muted{font-size:13px;color:#98a2b3}.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:5px 9px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:12px}
     .trace{display:grid;gap:8px}.trace-item{display:grid;grid-template-columns:82px 150px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #f2f4f7;font-size:13px}.trace-item:last-child{border:0}.ok{color:#027a48}.error{color:#b42318}
-    .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric{background:#f8fafc;border:1px solid #eaecf0;border-radius:10px;padding:12px}.metric b{display:block;font-size:20px;margin-top:4px}
+    .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric{background:#f8fafc;border:1px solid #eaecf0;border-radius:10px;padding:12px}.metric b{display:block;font-size:20px;margin-top:4px}.agent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:-8px 0 20px}.agent-card{background:#fff;border:1px solid #e4e7ec;border-radius:12px;padding:14px}.agent-card b{display:block;margin-bottom:5px}.agent-card span{font-size:11px;color:#1570ef;font-weight:800}.agent-card small{color:#667085;line-height:1.45}
     .source{padding:10px 0;border-bottom:1px solid #eaecf0}.source:last-child{border:0}.bars{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:130px 1fr 70px;gap:10px;align-items:center;font-size:13px}.bar-track{height:12px;background:#f2f4f7;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:#1570ef;border-radius:999px}.run-link{padding:0;background:none;color:#1570ef;border:0;font:inherit;font-weight:700}.run-detail{margin-top:12px;padding-top:12px;border-top:1px solid #eaecf0}
-    @media(max-width:800px){.grid,.metric-grid{grid-template-columns:1fr}.top{display:block}.trace-item{grid-template-columns:1fr}}
+    @media(max-width:800px){.grid,.metric-grid,.agent-grid{grid-template-columns:1fr}.top{display:block}.trace-item{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -27,9 +27,9 @@
     <div>
       <span class="status" id="health">checking</span>
       <h1>Enterprise Agent Platform</h1>
-      <p>Data · Knowledge · Ops，三个业务 Agent 共用一套 LLM Runtime。</p>
+      <p>Data · Knowledge · Ops · Supervisor，共享 Auth/RBAC、Tool Policy、Approval、Trace/Eval。</p>
     </div>
-    <div class="auth-box"><div class="chips"><span class="chip">FastAPI</span><span class="chip">RAG</span><span class="chip">SQL Guard</span><span class="chip">Trace</span></div><input id="apiToken" type="password" placeholder="Bearer Token"><div id="identityStatus" class="muted" style="margin-top:6px">检查身份...</div></div>
+    <div class="auth-box"><div class="chips"><span class="chip">FastAPI</span><span class="chip">RBAC</span><span class="chip">Human Approval</span><span class="chip">Eval</span></div><input id="apiToken" type="password" placeholder="Bearer Token"><div id="identityStatus" class="muted" style="margin-top:6px">检查身份...</div></div>
   </header>
 
   <nav class="tabs">
@@ -38,6 +38,13 @@
     <button class="tab" data-tab="ops">Ops Agent</button>
     <button class="tab" data-tab="supervisor">Supervisor</button>
   </nav>
+
+  <div class="agent-grid">
+    <div class="agent-card"><span>01 · ANALYTICS</span><b>Data Agent</b><small>Schema → SQL Guard → Query → Summary → Report</small></div>
+    <div class="agent-card"><span>02 · RAG</span><b>Knowledge Agent</b><small>Role scope → Retrieval → Citation → Versioned docs</small></div>
+    <div class="agent-card"><span>03 · OPERATIONS</span><b>Ops Agent</b><small>Snapshot · Logs · Prometheus · Approved actions</small></div>
+    <div class="agent-card"><span>04 · ORCHESTRATION</span><b>Supervisor</b><small>Ops + Knowledge + Data → Incident conclusion</small></div>
+  </div>
 
   <div class="grid">
     <div>
