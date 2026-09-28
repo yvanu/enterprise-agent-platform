@@ -1,25 +1,28 @@
 from pathlib import Path
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse
+from sqlalchemy import text
 
 from app.api.auth import router as auth_router
 from app.api.data import db, router as data_router
-from app.api.knowledge import router as knowledge_router
+from app.api.knowledge import agent as knowledge_agent, router as knowledge_router
 from app.api.ops import router as ops_router
 from app.api.platform import router as platform_router
 from app.api.supervisor import router as supervisor_router
-from app.core.config import get_settings
+from app.core.config import get_settings, validate_settings
 from app.db.demo import initialize_demo_database
 from app.platform.auth import current_identity
 from app.platform.observability import install_observability
+from app.platform.runs import run_store
 
 
 settings = get_settings()
+validate_settings(settings)
 initialize_demo_database(db)
 
 app = FastAPI(title=settings.app_name)
-install_observability(app)
+install_observability(app, rate_limit_per_minute=settings.rate_limit_per_minute)
 app.include_router(auth_router)
 for router in (data_router, knowledge_router, ops_router, platform_router, supervisor_router):
     app.include_router(router, dependencies=[Depends(current_identity)])
@@ -31,5 +34,36 @@ def index() -> FileResponse:
 
 
 @app.get("/health")
+@app.get("/health/live")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/ready")
+def readiness() -> dict:
+    checks: dict[str, str] = {}
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        checks["database"] = type(exc).__name__
+
+    try:
+        run_store.list(limit=1)
+        checks["platform_store"] = "ok"
+    except Exception as exc:
+        checks["platform_store"] = type(exc).__name__
+
+    try:
+        knowledge_agent.store.list_documents()
+        checks["knowledge_store"] = "ok"
+    except Exception as exc:
+        checks["knowledge_store"] = type(exc).__name__
+
+    if any(value != "ok" for value in checks.values()):
+        raise HTTPException(
+            status_code=503,
+            detail={"status": "not_ready", "checks": checks},
+        )
+    return {"status": "ready", "checks": checks}

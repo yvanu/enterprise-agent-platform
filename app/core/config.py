@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     app_name: str = "Enterprise Agent Platform"
     app_env: str = "development"
     auth_enabled: bool = False
-    auth_tokens: dict[str, str] = Field(default_factory=dict)
+    auth_tokens: dict[str, str] = Field(default_factory=dict, repr=False)
+    rate_limit_per_minute: int = Field(default=0, ge=0, le=100000)
 
     database_url: str = "sqlite:///./data/demo.db"
     database_schema: str | None = None
@@ -24,7 +25,7 @@ class Settings(BaseSettings):
     sql_timeout_seconds: int = 8
 
     llm_base_url: str = "https://api.openai.com/v1"
-    llm_api_key: str = ""
+    llm_api_key: SecretStr = SecretStr("")
     llm_model: str = ""
     embedding_model: str = ""
     llm_timeout_seconds: int = 60
@@ -50,6 +51,33 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+
+DEMO_AUTH_TOKENS = {"user-token", "operator-token", "approver-token", "admin-token"}
+VALID_ROLES = {"user", "operator", "approver", "admin"}
+
+
+def validate_settings(settings: Settings) -> None:
+    errors: list[str] = []
+    environment = settings.app_env.lower()
+    production = environment in {"prod", "production"}
+
+    if settings.auth_enabled and not settings.auth_tokens:
+        errors.append("AUTH_ENABLED=true 时必须配置 AUTH_TOKENS")
+    if production and not settings.auth_enabled:
+        errors.append("生产环境必须启用 AUTH_ENABLED")
+
+    for identity in settings.auth_tokens.values():
+        username, separator, role = identity.partition(":")
+        if not separator or not username or role not in VALID_ROLES:
+            errors.append("AUTH_TOKENS 值必须使用 username:role 且 role 有效")
+            break
+
+    if production and DEMO_AUTH_TOKENS.intersection(settings.auth_tokens):
+        errors.append("生产环境不能使用示例 AUTH_TOKENS")
+
+    if errors:
+        raise ValueError("配置检查失败: " + "; ".join(errors))
 
 
 @lru_cache

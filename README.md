@@ -133,6 +133,8 @@ AUTH_TOKENS={"user-token":"alice:user","operator-token":"operator:operator","app
 
 角色分工：`user` 可使用普通只读 Agent 能力；`operator` 可写入知识库、发起审批和执行已批准动作；`approver` 可查看并审批请求；`admin` 拥有全部权限。审批人由认证身份确定，客户端不能伪造审批人；非管理员不能审批自己发起的请求。
 
+启动时会执行配置检查：生产环境必须启用认证、不能使用 `.env.example` 的示例 token；`AUTH_ENABLED=true` 时必须配置合法 `username:role`。`LLM_API_KEY` 使用 `SecretStr`，`AUTH_TOKENS` 不进入 Settings repr；`.env` 已被 gitignore，生产部署应通过环境变量或 Secret Store 注入真实凭据。
+
 ## Request Trace 与统一错误模型
 
 每个 HTTP 请求都会生成新的 `X-Request-ID`；调用方可以通过 `X-Correlation-ID` 传入跨服务/跨步骤关联 ID。两者都会回写到响应头，并写入该请求触发的 Agent Run，便于从 HTTP 请求追踪到 Run/Trace。HTTP 请求和 Agent Run 同时输出 JSON 结构化日志。
@@ -144,6 +146,8 @@ API 错误统一为：
 ```
 
 校验错误会使用 `VALIDATION_ERROR` 并在 `details` 中返回字段错误；未处理异常只返回 `INTERNAL_ERROR`，不把服务端堆栈泄露给客户端。
+
+`RATE_LIMIT_PER_MINUTE` 提供单进程、按客户端 IP 的轻量 API 限流，`0` 可关闭；超过限制返回 `429 RATE_LIMITED` 和 `Retry-After: 60`。多副本生产环境应把全局限流下沉到 API Gateway/Redis，而不是依赖进程内计数器。
 
 ## CI / Regression
 
@@ -158,7 +162,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-`/app/data` 使用 Docker volume 持久化。若接企业 PostgreSQL/Kingbase，只需通过 `DATABASE_URL` 或 `DATA_SOURCES` 配置连接，不会在启动时修改非 SQLite 业务库。
+`/app/data` 使用 Docker volume 持久化。Compose healthcheck 使用 `/health/ready`。若接企业 PostgreSQL/Kingbase，只需通过 `DATABASE_URL` 或 `DATA_SOURCES` 配置连接，不会在启动时修改非 SQLite 业务库。
 
 提供一个只依赖 Python 标准库的轻量压测脚本：
 
@@ -208,6 +212,10 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 ```
 
 ## API
+
+### Health
+- `GET /health` / `GET /health/live`：进程存活检查，不探测外部依赖
+- `GET /health/ready`：数据库、平台状态库、知识库就绪检查；失败返回 503
 
 ### Auth
 - `GET /api/v1/auth/me`：返回当前认证用户和角色

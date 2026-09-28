@@ -6,6 +6,9 @@
 - Offline demo now records a Supervisor Run/Trace while keeping temporary demo data isolated.
 - Added per-request Request ID / Correlation ID propagation into Agent Run records.
 - Added unified API error envelopes and JSON structured HTTP/Agent Run logs.
+- Added per-process API rate limiting with unified 429 responses.
+- Added `/health/live` and dependency-aware `/health/ready` endpoints plus Docker healthcheck.
+- Added production startup config validation and secret-safe Settings representation.
 
 ## v0.1.0
 

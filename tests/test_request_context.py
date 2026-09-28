@@ -3,6 +3,20 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
+def test_health_endpoints():
+    client = TestClient(app)
+
+    assert client.get("/health/live").json() == {"status": "ok"}
+    ready = client.get("/health/ready")
+    assert ready.status_code == 200
+    assert ready.json()["status"] == "ready"
+    assert ready.json()["checks"] == {
+        "database": "ok",
+        "platform_store": "ok",
+        "knowledge_store": "ok",
+    }
+
+
 def test_request_and_correlation_headers():
     response = TestClient(app).get(
         "/health",

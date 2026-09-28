@@ -1,8 +1,10 @@
 import json
 import logging
+from collections import deque
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from time import perf_counter
+from threading import Lock
+from time import monotonic, perf_counter
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
@@ -59,6 +61,30 @@ def current_request_context() -> tuple[str | None, str | None]:
     return request_id_var.get(), correlation_id_var.get()
 
 
+class _RateLimiter:
+    def __init__(self, limit: int):
+        self.limit = limit
+        self.calls: dict[str, deque[float]] = {}
+        self.lock = Lock()
+
+    def allow(self, key: str) -> bool:
+        if self.limit <= 0:
+            return True
+        now = monotonic()
+        with self.lock:
+            calls = self.calls.setdefault(key, deque())
+            while calls and now - calls[0] >= 60:
+                calls.popleft()
+            if len(calls) >= self.limit:
+                return False
+            calls.append(now)
+        return True
+
+
+def _rate_limit_key(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
 def _correlation_id(request: Request) -> str:
     value = request.headers.get("x-correlation-id", "").strip()
     if value and len(value) <= 128 and all(c.isalnum() or c in "._-" for c in value):
@@ -86,7 +112,10 @@ def _error(
     return JSONResponse(status_code=status_code, content=jsonable_encoder(payload))
 
 
-def install_observability(app: FastAPI) -> None:
+def install_observability(app: FastAPI, *, rate_limit_per_minute: int = 0) -> None:
+    # ponytail: per-process limiter; use a shared gateway/Redis when multiple workers need a global quota.
+    limiter = _RateLimiter(rate_limit_per_minute)
+
     @app.middleware("http")
     async def request_context(request: Request, call_next):
         request_id = uuid4().hex
@@ -96,7 +125,17 @@ def install_observability(app: FastAPI) -> None:
         started = perf_counter()
         error_type: str | None = None
         try:
-            response = await call_next(request)
+            if request.url.path.startswith("/api/v1/") and not limiter.allow(
+                _rate_limit_key(request)
+            ):
+                response = _error(
+                    code="RATE_LIMITED",
+                    message="请求过于频繁，请稍后重试",
+                    status_code=429,
+                )
+                response.headers["Retry-After"] = "60"
+            else:
+                response = await call_next(request)
         except Exception as exc:
             error_type = type(exc).__name__
             logger.error(
@@ -147,6 +186,7 @@ def install_observability(app: FastAPI) -> None:
                 404: "NOT_FOUND",
                 409: "CONFLICT",
                 413: "PAYLOAD_TOO_LARGE",
+                429: "RATE_LIMITED",
                 503: "SERVICE_UNAVAILABLE",
             }.get(exc.status_code, "HTTP_ERROR"),
             message=message,

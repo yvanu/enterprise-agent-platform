@@ -23,11 +23,8 @@ class OpenAICompatibleLLM:
         self.settings = settings
 
     def _headers(self) -> dict[str, str]:
-        return (
-            {"Authorization": f"Bearer {self.settings.llm_api_key}"}
-            if self.settings.llm_api_key
-            else {}
-        )
+        api_key = self.settings.llm_api_key.get_secret_value()
+        return {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
     def chat(self, messages: list[dict[str, str]]) -> str:
         if not self.settings.llm_model:

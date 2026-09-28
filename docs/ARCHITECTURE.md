@@ -107,6 +107,9 @@ Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The 
 | Ops commands | fixed arguments / server-side allowlists |
 | Request tracing | X-Request-ID + X-Correlation-ID propagated into Agent Run |
 | API errors | shared error envelope with stable code and request context |
+| API abuse | per-process client-IP rate limit; gateway/shared limiter for multi-replica deployments |
+| Secrets | `.env` ignored, `SecretStr` for LLM key, auth tokens excluded from Settings repr, production config validation |
+| Health | liveness is process-only; readiness checks database + platform store + knowledge store |
 | Audit | Run/Trace + approval actor/requester/executor |
 | Prompt data retention | raw user question is not stored in Run history |
 
@@ -137,4 +140,5 @@ The current SQLite choices are deliberate for a self-contained demo. The platfor
 3. Replace O(n) embedding scan with pgvector when measured corpus size/latency requires it.
 4. Add tenant/user ACL predicates in addition to role scope.
 5. Parallelize Supervisor delegation if real incident latency becomes material.
-6. Add rate limiting, secrets management, alert routing, and production retention policies.
+6. Move rate limiting to API Gateway/Redis for multi-replica deployments and integrate a real Secret Manager.
+7. Add alert routing and production retention policies.
