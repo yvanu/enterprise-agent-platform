@@ -2,7 +2,7 @@
 
 面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。
 
-## 三个 Agent
+## 业务 Agent 与 Supervisor
 
 ### Data Agent
 自然语言 → Schema 感知 → SQL 生成 → 安全校验 → 自动纠错 → 数据结论。
@@ -99,6 +99,22 @@ flowchart LR
   OPS --> RUNS
 ```
 
+## 一键离线演示
+
+不配置 LLM Key 也可以完整跑一遍跨 Agent 故障调查：
+
+```bash
+python scripts/demo_incident.py
+```
+
+脚本使用临时 SQLite、固定知识库、模拟超时日志和 Deterministic Fake LLM，实际经过 Data / Knowledge / Ops / Supervisor 的正式业务代码，不访问外部服务，也不会改生产数据。需要机器可读结果时使用：
+
+```bash
+python scripts/demo_incident.py --json
+```
+
+简历表述、5 分钟演示路径、核心设计取舍和常见面试问题见 [`docs/INTERVIEW.md`](docs/INTERVIEW.md)。
+
 ## 身份认证与 RBAC
 
 默认开发模式下 `AUTH_ENABLED=false`，API 以 `development/admin` 身份运行；共享或生产环境应开启认证：
@@ -144,7 +160,7 @@ uvicorn app.main:app --reload
 
 打开：
 
-- `http://127.0.0.1:8000/`：当前 Data Agent 演示界面
+- `http://127.0.0.1:8000/`：Multi-Agent Web 演示界面
 - `http://127.0.0.1:8000/docs`：完整 API
 
 可选多数据源配置：
