@@ -75,6 +75,10 @@ app/
 
 暂不增加 Supervisor。出现真实跨 Agent 协同需求时再加。
 
+## CI / Regression
+
+GitHub Actions 会在 `main` push 和 Pull Request 时使用 Python 3.11 执行完整 `pytest`。其中包含离线 Regression Suite，因此 CI 不依赖外部 LLM Key，也不会访问生产数据库。
+
 ## 快速启动
 
 ```bash
