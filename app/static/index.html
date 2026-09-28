@@ -53,6 +53,7 @@
           <button class="secondary" id="refreshRuns">刷新</button>
         </div>
         <div id="evalSummary" class="chips" style="margin-top:12px"></div>
+        <div id="qualityMetrics" style="margin-top:12px"></div>
         <div id="recentRuns" class="muted" style="margin-top:12px">加载中...</div>
       </div>
       <div class="card">
@@ -222,9 +223,10 @@ async function loadToolPolicies(){
 }
 async function loadRuns(){
   try{
-    const [runs,evals]=await Promise.all([
+    const [runs,evals,metrics]=await Promise.all([
       api("/api/v1/platform/runs?limit=8"),
-      api("/api/v1/platform/evals?limit=20")
+      api("/api/v1/platform/evals?limit=20"),
+      api("/api/v1/platform/metrics")
     ]);
     $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}</span></p>`).join(""):"暂无运行记录";
     if(evals.length){
@@ -234,6 +236,7 @@ async function loadRuns(){
     }else{
       $("evalSummary").innerHTML='<span class="chip">Eval 暂无样本</span>';
     }
+    $("qualityMetrics").innerHTML=metrics.length?metrics.map(x=>`<p><b>${esc(x.agent)}</b><br><span class="muted">${x.runs} runs · success ${x.success_rate}% · avg ${x.avg_duration_ms} ms · eval ${x.eval_avg_score} · eval pass ${x.eval_pass_rate}%</span></p>`).join(""):"";
   }catch(e){$("recentRuns").textContent=e.message}
 }
 async function loadOps(){

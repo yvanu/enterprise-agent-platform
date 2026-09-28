@@ -24,6 +24,15 @@ class EvalResult(BaseModel):
     checks: list[EvalCheck]
 
 
+class AgentQualityMetric(BaseModel):
+    agent: str
+    runs: int
+    success_rate: int
+    avg_duration_ms: int
+    eval_avg_score: int
+    eval_pass_rate: int
+
+
 def evaluate_run(run: RunRecord) -> EvalResult:
     names = {step.name for step in run.trace}
     required = REQUIRED_STEPS.get(run.agent, set())
@@ -65,3 +74,21 @@ def evaluate_run(run: RunRecord) -> EvalResult:
 
 def evaluate_runs(runs: list[RunRecord]) -> list[EvalResult]:
     return [evaluate_run(run) for run in runs]
+
+
+def summarize_quality(runs: list[RunRecord]) -> list[AgentQualityMetric]:
+    metrics: list[AgentQualityMetric] = []
+    for agent in sorted({run.agent for run in runs}):
+        agent_runs = [run for run in runs if run.agent == agent]
+        evals = evaluate_runs(agent_runs)
+        metrics.append(
+            AgentQualityMetric(
+                agent=agent,
+                runs=len(agent_runs),
+                success_rate=round(sum(run.status == "ok" for run in agent_runs) / len(agent_runs) * 100),
+                avg_duration_ms=round(sum(run.duration_ms for run in agent_runs) / len(agent_runs)),
+                eval_avg_score=round(sum(item.score for item in evals) / len(evals)),
+                eval_pass_rate=round(sum(item.passed for item in evals) / len(evals) * 100),
+            )
+        )
+    return metrics

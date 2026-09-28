@@ -1,4 +1,4 @@
-from app.platform.evals import evaluate_run
+from app.platform.evals import evaluate_run, summarize_quality
 from app.platform.models import TraceStep
 from app.platform.runs import RunRecord
 
@@ -34,3 +34,28 @@ def test_eval_fails_missing_step_and_error_run():
     assert missing.passed is False
     assert any(check.name == "step:answer_with_context" and not check.passed for check in missing.checks)
     assert failed.passed is False
+
+
+def test_quality_metrics_group_by_agent():
+    complete = ["schema", "generate_sql", "database_query", "summarize", "presentation"]
+    runs = [
+        _run("data", complete),
+        RunRecord(
+            id=2,
+            agent="data",
+            status="error",
+            duration_ms=30,
+            trace=[],
+            error_type="RuntimeError",
+            created_at="2026-09-28 10:01:00",
+        ),
+    ]
+
+    metric = summarize_quality(runs)[0]
+
+    assert metric.agent == "data"
+    assert metric.runs == 2
+    assert metric.success_rate == 50
+    assert metric.avg_duration_ms == 20
+    assert metric.eval_avg_score == 57
+    assert metric.eval_pass_rate == 50

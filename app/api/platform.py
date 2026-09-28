@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 
-from app.platform.evals import EvalResult, evaluate_runs
+from app.platform.evals import AgentQualityMetric, EvalResult, evaluate_runs, summarize_quality
 from app.platform.policy import ToolPolicy, tool_policies
 from app.platform.regression import RegressionReport, run_regression_suite
 from app.platform.runs import RunRecord, run_store
@@ -28,6 +28,11 @@ def evals(
     agent: str | None = Query(default=None),
 ) -> list[EvalResult]:
     return evaluate_runs(run_store.list(limit=limit, agent=agent))
+
+
+@router.get("/metrics", response_model=list[AgentQualityMetric])
+def metrics(limit: int = Query(200, ge=1, le=200)) -> list[AgentQualityMetric]:
+    return summarize_quality(run_store.list(limit=limit))
 
 
 @router.post("/regression/run", response_model=RegressionReport)
