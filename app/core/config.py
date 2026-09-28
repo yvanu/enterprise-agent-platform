@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     ops_http_timeout_seconds: int = 5
     ops_enable_docker: bool = False
     ops_enable_kubernetes: bool = False
+    ops_allowed_services: str = ""
     ops_command_timeout_seconds: int = 5
 
     platform_db_path: str = "./data/platform.db"

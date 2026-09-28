@@ -183,6 +183,12 @@ ORDER BY total DESC</textarea>
           <div class="actions"><button class="secondary" id="loadDocker">Docker PS</button><button class="secondary" id="loadK8s">Kubernetes Pods</button></div>
           <pre id="runtimeResult">默认关闭；在 .env 中显式启用后可读取。</pre>
         </div>
+        <div class="card">
+          <h3>受控运维动作</h3>
+          <input id="restartService" placeholder="OPS_ALLOWED_SERVICES 中的 systemd 服务名">
+          <div class="actions"><button class="secondary" id="requestRestart">申请重启</button></div>
+          <p class="muted">仅白名单服务；必须经过 Human Approval，且不接受任意 Shell。</p>
+        </div>
       </div>
     </div>
   </section>
@@ -257,18 +263,33 @@ async function loadApprovals(){
     const items=await api("/api/v1/platform/approvals?limit=20");
     $("approvals").innerHTML=items.length?items.map(x=>{
       const actions=x.status==="pending"?`<button class="secondary" data-approve="${x.id}">批准</button> <button class="secondary" data-reject="${x.id}">拒绝</button>`:
-        x.status==="approved"&&x.tool==="document_delete"?`<button class="secondary" data-execute-delete="${x.id}" data-target="${esc(x.target)}">执行删除</button>`:"";
+        x.status==="approved"&&x.tool==="document_delete"?`<button class="secondary" data-execute-delete="${x.id}" data-target="${esc(x.target)}">执行删除</button>`:
+        x.status==="approved"&&x.tool==="service_restart"?`<button class="secondary" data-execute-restart="${x.id}" data-target="${esc(x.target)}">执行重启</button>`:"";
       return `<p><b>#${x.id} · ${esc(x.tool)}</b> · <span class="${x.status==="rejected"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${esc(x.target)} · ${esc(x.reason)} · requester ${esc(x.requested_by||"-")}${x.actor?" · approver "+esc(x.actor):""}${x.consumed_by?" · executor "+esc(x.consumed_by):""}</span><br>${actions}</p>`;
     }).join(""):"暂无审批";
     $("approvals").querySelectorAll("[data-approve]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.approve,"approved"));
     $("approvals").querySelectorAll("[data-reject]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.reject,"rejected"));
     $("approvals").querySelectorAll("[data-execute-delete]").forEach(button=>button.onclick=()=>executeDocumentDelete(button.dataset.executeDelete,button.dataset.target));
+    $("approvals").querySelectorAll("[data-execute-restart]").forEach(button=>button.onclick=()=>executeServiceRestart(button.dataset.executeRestart,button.dataset.target));
   }catch(e){$("approvals").textContent=e.message}
+}
+async function requestServiceRestart(service){
+  try{
+    await post("/api/v1/platform/approvals",{agent:"ops",tool:"service_restart",target:"service:"+service,reason:"重启白名单服务 "+service});
+    loadApprovals();
+  }catch(e){alert(e.message)}
 }
 async function decideApproval(id,decision){
   try{
     await post("/api/v1/platform/approvals/"+id+"/decision",{decision});
     loadApprovals();
+  }catch(e){alert(e.message)}
+}
+async function executeServiceRestart(approvalId,target){
+  const service=String(target).split(":")[1];
+  try{
+    await post("/api/v1/ops/services/"+encodeURIComponent(service)+"/restart?approval_id="+encodeURIComponent(approvalId),{});
+    loadApprovals();loadOps();
   }catch(e){alert(e.message)}
 }
 async function executeDocumentDelete(approvalId,target){
@@ -407,6 +428,7 @@ $("runRegression").onclick=async()=>{
     $("regressionResult").innerHTML=`<b class="${d.passed?"ok":"error"}">${d.passed?"PASS":"FAIL"} · ${d.passed_cases}/${d.total_cases}</b><br>${d.cases.map(x=>`<span class="${x.passed?"ok":"error"}">${x.passed?"PASS":"FAIL"}</span> ${esc(x.agent)} · ${esc(x.id)} · ${esc(x.detail)}`).join("<br>")}`;
   }catch(e){$("regressionResult").textContent=e.message}
 };
+$("requestRestart").onclick=()=>{const service=$("restartService").value.trim();if(service)requestServiceRestart(service)};
 $("refreshOps").onclick=loadOps;
 $("refreshLogs").onclick=loadLogs;
 $("runProm").onclick=async()=>{

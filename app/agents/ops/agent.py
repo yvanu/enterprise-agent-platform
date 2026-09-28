@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from app.agents.ops.models import LogTail, OpsAnswer, OpsSnapshot, PrometheusResult, RuntimeInventory
+from app.agents.ops.models import LogTail, OpsAnswer, OpsSnapshot, PrometheusResult, RuntimeInventory, ServiceActionResult
 from app.platform.llm import OpenAICompatibleLLM
 from app.platform.models import TraceStep
 from app.platform.policy import require_tool
@@ -36,6 +36,7 @@ class OpsAgent:
         http_timeout_seconds: int = 5,
         enable_docker: bool = False,
         enable_kubernetes: bool = False,
+        allowed_services: str = "",
         command_timeout_seconds: int = 5,
     ):
         self.llm = llm
@@ -44,6 +45,11 @@ class OpsAgent:
         self.http_timeout_seconds = http_timeout_seconds
         self.enable_docker = enable_docker
         self.enable_kubernetes = enable_kubernetes
+        self.allowed_services = {
+            service.strip()
+            for service in allowed_services.split(",")
+            if service.strip()
+        }
         self.command_timeout_seconds = command_timeout_seconds
 
     def snapshot(self) -> OpsSnapshot:
@@ -136,6 +142,36 @@ class OpsAgent:
                 }
             )
         return RuntimeInventory(tool="kubernetes", items=items)
+
+    def restart_service(
+        self,
+        service: str,
+        *,
+        approved: bool = False,
+    ) -> ServiceActionResult:
+        require_tool(
+            "ops",
+            "service_restart",
+            "write",
+            approval_granted=approved,
+        )
+        if service not in self.allowed_services:
+            raise ValueError("服务不在 OPS_ALLOWED_SERVICES 白名单中")
+        if not shutil.which("systemctl"):
+            raise RuntimeError("systemctl 命令不可用")
+
+        subprocess.run(
+            ["systemctl", "restart", service],
+            capture_output=True,
+            text=True,
+            timeout=self.command_timeout_seconds,
+            check=True,
+        )
+        return ServiceActionResult(
+            service=service,
+            action="restart",
+            status="executed",
+        )
 
     def diagnose(self, question: str) -> OpsAnswer:
         snapshot = self.snapshot()

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.agents.ops.agent import OpsAgent
@@ -9,9 +11,11 @@ from app.agents.ops.models import (
     PrometheusRequest,
     PrometheusResult,
     RuntimeInventory,
+    ServiceActionResult,
 )
 from app.core.config import get_settings
-from app.platform.auth import require_roles
+from app.platform.approvals import approval_store
+from app.platform.auth import Identity, require_roles
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
 from app.platform.runs import start_run
 
@@ -29,6 +33,7 @@ agent = OpsAgent(
     http_timeout_seconds=settings.ops_http_timeout_seconds,
     enable_docker=settings.ops_enable_docker,
     enable_kubernetes=settings.ops_enable_kubernetes,
+    allowed_services=settings.ops_allowed_services,
     command_timeout_seconds=settings.ops_command_timeout_seconds,
 )
 
@@ -63,6 +68,33 @@ def docker() -> RuntimeInventory:
 def kubernetes() -> RuntimeInventory:
     try:
         return agent.kubernetes_pods()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/services/{service}/restart", response_model=ServiceActionResult)
+def restart_service(
+    service: str,
+    approval_id: int,
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> ServiceActionResult:
+    try:
+        if service not in agent.allowed_services:
+            raise HTTPException(status_code=400, detail="服务不在 OPS_ALLOWED_SERVICES 白名单中")
+        approval_store.consume(
+            approval_id,
+            agent="ops",
+            tool="service_restart",
+            target=f"service:{service}",
+            actor=identity.username,
+        )
+        return agent.restart_service(service, approved=True)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except HTTPException:
+        raise
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

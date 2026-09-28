@@ -28,6 +28,12 @@ class RuntimeInventory(BaseModel):
     items: list[dict[str, Any]]
 
 
+class ServiceActionResult(BaseModel):
+    service: str
+    action: str
+    status: str
+
+
 class OpsSnapshot(BaseModel):
     hostname: str
     cpu_count: int | None

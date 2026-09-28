@@ -24,6 +24,7 @@ POLICIES = [
     ToolPolicy(name="prometheus", agent="ops", risk="low", mode="read"),
     ToolPolicy(name="docker_ps", agent="ops", risk="low", mode="read"),
     ToolPolicy(name="kubernetes_pods", agent="ops", risk="low", mode="read"),
+    ToolPolicy(name="service_restart", agent="ops", risk="high", mode="write", approval_required=True),
 ]
 
 

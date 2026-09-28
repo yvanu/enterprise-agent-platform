@@ -47,7 +47,7 @@
 - 只读系统快照
 - 基于快照的故障分析
 
-已支持通过配置的只读日志文件和 Prometheus API 参与诊断；日志路径只能由服务端配置，不能由请求指定。还可显式启用固定只读命令的 Docker 容器列表与 Kubernetes Pod 列表。当前仍没有重启、Shell 写操作或自动修复能力。
+已支持通过配置的只读日志文件和 Prometheus API 参与诊断；日志路径只能由服务端配置，不能由请求指定。还可显式启用固定只读命令的 Docker 容器列表与 Kubernetes Pod 列表。受控写操作目前支持白名单 systemd 服务重启，必须经过 Human Approval；仍不接受任意 Shell。
 
 ## 架构
 
@@ -128,6 +128,12 @@ EMBEDDING_MODEL=
 
 兼容 OpenAI Chat Completions / Embeddings API 的本地服务可以不配置 API Key。
 
+Ops 受控重启需要显式配置服务白名单：
+
+```env
+OPS_ALLOWED_SERVICES=nginx,my-api
+```
+
 ## API
 
 ### Auth
@@ -165,10 +171,11 @@ EMBEDDING_MODEL=
 - `POST /api/v1/ops/prometheus/query`
 - `GET /api/v1/ops/docker`
 - `GET /api/v1/ops/kubernetes`
+- `POST /api/v1/ops/services/{service}/restart?approval_id=...`：白名单服务 + 审批后重启
 - `POST /api/v1/ops/diagnose`
 
 ## 安全边界
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、P50/P95、错误类型、平均 Eval 分和 Eval 通过率，并提供 Prometheus 文本格式出口。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先由 `operator/admin` 创建审批、再由 `approver/admin` 通过认证身份批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除；请求人、审批人、执行人都会写入审批审计记录。Ops Agent 当前仍只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。未来新增服务重启、配置变更等高风险动作时复用同一审批机制。
+平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、P50/P95、错误类型、平均 Eval 分和 Eval 通过率，并提供 Prometheus 文本格式出口。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先由 `operator/admin` 创建审批、再由 `approver/admin` 通过认证身份批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除；请求人、审批人、执行人都会写入审批审计记录。Ops Agent 除只读系统信息、服务端白名单日志、Prometheus、固定 `docker ps` / `kubectl get pods` 外，现已支持 `OPS_ALLOWED_SERVICES` 白名单内的 `systemctl restart <service>`。该 Tool 标记为 `high/write/approval_required`，审批 ID 会绑定 `service:<name>` 并单次消费；仍不接受任意 Shell。未来配置变更、Kubernetes rollout/scale 等动作继续复用同一审批机制。

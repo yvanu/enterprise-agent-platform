@@ -57,6 +57,31 @@ def test_kubernetes_inventory(monkeypatch):
     assert result.items[0]["phase"] == "Running"
 
 
+def test_restart_service_requires_allowlist_and_approval(monkeypatch):
+    class _Result:
+        stdout = ""
+
+    monkeypatch.setattr(ops_module.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(ops_module.subprocess, "run", lambda *args, **kwargs: _Result())
+    agent = OpsAgent(_NoopLLM(), allowed_services="nginx")
+
+    try:
+        agent.restart_service("nginx")
+        assert False, "restart should require approval"
+    except PermissionError:
+        pass
+
+    result = agent.restart_service("nginx", approved=True)
+    assert result.service == "nginx"
+    assert result.status == "executed"
+
+    try:
+        agent.restart_service("sshd", approved=True)
+        assert False, "service should be allowlisted"
+    except ValueError:
+        pass
+
+
 def test_prometheus_query(monkeypatch):
     class _Response:
         def raise_for_status(self):
