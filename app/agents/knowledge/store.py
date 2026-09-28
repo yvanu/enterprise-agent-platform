@@ -112,3 +112,11 @@ class KnowledgeStore:
             {"document_id": row[0], "title": row[1], "chunks": row[2]}
             for row in rows
         ]
+
+    def delete_document(self, document_id: int) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM knowledge_chunks WHERE document_id = ?",
+                (document_id,),
+            )
+        return cursor.rowcount > 0

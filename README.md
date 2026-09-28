@@ -30,6 +30,7 @@
 - 检索结果作为上下文回答
 - 返回原始来源
 - 知识文档目录查询
+- 知识文档删除采用 Human-in-the-loop 审批，审批通过后才能执行且审批单次消费
 
 当前采用进程内 O(n) 向量扫描，适合项目演示和小规模知识库。数据量真正变大时再替换 pgvector / Vectorize，不提前引入向量数据库。
 
@@ -57,6 +58,7 @@ app/
 ├── platform/
 │   ├── llm.py          # Chat + Embedding，共享 Runtime
 │   ├── policy.py       # Tool 风险与权限清单
+│   ├── approvals.py    # Human-in-the-loop 审批与单次授权
 │   ├── runs.py         # Agent Run 审计与耗时记录
 │   ├── evals.py        # 基于 Trace 的确定性 Eval
 │   └── regression.py   # 固定业务样本回归测试
@@ -121,6 +123,9 @@ EMBEDDING_MODEL=
 - `GET /api/v1/platform/runs/{run_id}`：Run 详情、Trace 与对应 Eval 明细
 - `GET /api/v1/platform/evals`：对 Run Trace 做确定性评估，可按 Agent 过滤
 - `GET /api/v1/platform/metrics`：按 Agent 汇总运行次数、成功率、平均耗时和 Eval 指标
+- `GET /api/v1/platform/approvals`：查看审批记录
+- `POST /api/v1/platform/approvals`：为需要审批的 Tool 创建审批请求
+- `POST /api/v1/platform/approvals/{id}/decision`：批准或拒绝审批请求
 - `POST /api/v1/platform/regression/run`：运行隔离的固定业务样本回归测试
 
 ### Data
@@ -131,6 +136,7 @@ EMBEDDING_MODEL=
 
 ### Knowledge
 - `GET /api/v1/knowledge/documents`
+- `DELETE /api/v1/knowledge/documents/{document_id}?approval_id=...`：消费已批准的删除审批后执行
 - `POST /api/v1/knowledge/documents`
 - `POST /api/v1/knowledge/documents/upload`
 - `POST /api/v1/knowledge/ask`
@@ -147,4 +153,4 @@ EMBEDDING_MODEL=
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、平均 Eval 分和 Eval 通过率。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Ops Agent 当前只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。真正增加高风险写操作时再接 Human-in-the-loop 审批流。
+平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、平均 Eval 分和 Eval 通过率。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先创建审批、由审批人批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除。Ops Agent 当前仍只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。未来新增服务重启、配置变更等高风险动作时复用同一审批机制。

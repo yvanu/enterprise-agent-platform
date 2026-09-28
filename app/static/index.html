@@ -39,12 +39,22 @@
   </nav>
 
   <div class="grid">
-    <div class="card">
-      <div class="actions" style="justify-content:space-between;margin-top:0">
-        <h3 style="margin:0">Tool Policy</h3>
-        <span class="muted">平台统一工具权限清单</span>
+    <div>
+      <div class="card">
+        <div class="actions" style="justify-content:space-between;margin-top:0">
+          <h3 style="margin:0">Tool Policy</h3>
+          <span class="muted">平台统一工具权限清单</span>
+        </div>
+        <div id="toolPolicies" class="chips" style="margin-top:12px">加载中...</div>
       </div>
-      <div id="toolPolicies" class="chips" style="margin-top:12px">加载中...</div>
+      <div class="card">
+        <div class="actions" style="justify-content:space-between;margin-top:0">
+          <h3 style="margin:0">Human Approval</h3>
+          <button class="secondary" id="refreshApprovals">刷新</button>
+        </div>
+        <input id="approvalActor" value="reviewer" placeholder="审批人" style="margin-top:12px">
+        <div id="approvals" class="muted" style="margin-top:12px">加载中...</div>
+      </div>
     </div>
     <div>
       <div class="card">
@@ -213,8 +223,46 @@ async function loadSchema(){
 async function loadKnowledgeDocs(){
   try{
     const docs=await api("/api/v1/knowledge/documents");
-    $("knowledgeDocs").innerHTML=docs.length?docs.map(x=>`<p><b>${esc(x.title)}</b><br><span class="muted">#${x.document_id} · ${x.chunks} chunks</span></p>`).join(""):"暂无文档";
+    $("knowledgeDocs").innerHTML=docs.length?docs.map(x=>`<p><b>${esc(x.title)}</b><br><span class="muted">#${x.document_id} · ${x.chunks} chunks</span><br><button class="secondary" data-request-delete="${x.document_id}" data-title="${esc(x.title)}" style="margin-top:6px">申请删除</button></p>`).join(""):"暂无文档";
+    $("knowledgeDocs").querySelectorAll("[data-request-delete]").forEach(button=>button.onclick=()=>requestDocumentDelete(button.dataset.requestDelete,button.dataset.title));
   }catch(e){$("knowledgeDocs").textContent=e.message}
+}
+async function requestDocumentDelete(documentId,title){
+  try{
+    await post("/api/v1/platform/approvals",{
+      agent:"knowledge",
+      tool:"document_delete",
+      target:"document:"+documentId,
+      reason:"删除知识文档："+title
+    });
+    loadApprovals();
+  }catch(e){alert(e.message)}
+}
+async function loadApprovals(){
+  try{
+    const items=await api("/api/v1/platform/approvals?limit=20");
+    $("approvals").innerHTML=items.length?items.map(x=>{
+      const actions=x.status==="pending"?`<button class="secondary" data-approve="${x.id}">批准</button> <button class="secondary" data-reject="${x.id}">拒绝</button>`:
+        x.status==="approved"&&x.tool==="document_delete"?`<button class="secondary" data-execute-delete="${x.id}" data-target="${esc(x.target)}">执行删除</button>`:"";
+      return `<p><b>#${x.id} · ${esc(x.tool)}</b> · <span class="${x.status==="rejected"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${esc(x.target)} · ${esc(x.reason)}</span><br>${actions}</p>`;
+    }).join(""):"暂无审批";
+    $("approvals").querySelectorAll("[data-approve]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.approve,"approved"));
+    $("approvals").querySelectorAll("[data-reject]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.reject,"rejected"));
+    $("approvals").querySelectorAll("[data-execute-delete]").forEach(button=>button.onclick=()=>executeDocumentDelete(button.dataset.executeDelete,button.dataset.target));
+  }catch(e){$("approvals").textContent=e.message}
+}
+async function decideApproval(id,decision){
+  try{
+    await post("/api/v1/platform/approvals/"+id+"/decision",{decision,actor:$("approvalActor").value||"reviewer"});
+    loadApprovals();
+  }catch(e){alert(e.message)}
+}
+async function executeDocumentDelete(approvalId,target){
+  const documentId=String(target).split(":")[1];
+  try{
+    await api("/api/v1/knowledge/documents/"+encodeURIComponent(documentId)+"?approval_id="+encodeURIComponent(approvalId),{method:"DELETE"});
+    loadApprovals();loadKnowledgeDocs();
+  }catch(e){alert(e.message)}
 }
 async function loadToolPolicies(){
   try{
@@ -332,6 +380,7 @@ $("knowledgeAsk").onclick=async()=>{
   }catch(e){$("knowledgeAnswer").textContent=e.message}
   finally{loadRuns()}
 };
+$("refreshApprovals").onclick=loadApprovals;
 $("refreshRuns").onclick=loadRuns;
 $("runRegression").onclick=async()=>{
   $("regressionResult").textContent="运行中...";
@@ -374,7 +423,7 @@ $("opsAsk").onclick=async()=>{
 
 (async()=>{
   try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
-  await loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadRuns();loadOps();
+  await loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadApprovals();loadRuns();loadOps();
 })();
 </script>
 </body>

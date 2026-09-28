@@ -5,6 +5,7 @@ from app.agents.knowledge.models import AskRequest, DocumentRequest, KnowledgeAn
 from app.agents.knowledge.parser import extract_text
 from app.agents.knowledge.store import KnowledgeStore
 from app.core.config import get_settings
+from app.platform.approvals import approval_store
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
 from app.platform.runs import start_run
 
@@ -21,6 +22,27 @@ agent = KnowledgeAgent(
 @router.get("/documents")
 def documents() -> list[dict]:
     return agent.documents()
+
+
+@router.delete("/documents/{document_id}")
+def delete_document(document_id: int, approval_id: int) -> dict[str, int]:
+    if not any(item["document_id"] == document_id for item in agent.documents()):
+        raise HTTPException(status_code=404, detail="文档不存在")
+
+    try:
+        approval_store.consume(
+            approval_id,
+            agent="knowledge",
+            tool="document_delete",
+            target=f"document:{document_id}",
+        )
+        if not agent.delete_document(document_id, approved=True):
+            raise HTTPException(status_code=404, detail="文档不存在")
+        return {"deleted_document_id": document_id}
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.post("/documents")

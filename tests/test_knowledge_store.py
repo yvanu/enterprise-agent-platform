@@ -44,3 +44,17 @@ def test_document_catalog(tmp_path):
     assert [item["document_id"] for item in documents] == [second, first]
     assert documents[0]["title"] == "海洋资料"
     assert documents[0]["chunks"] == 1
+
+
+def test_document_delete_requires_approved_tool(tmp_path):
+    agent = KnowledgeAgent(KnowledgeStore(str(tmp_path / "knowledge.db")), _LLM(), top_k=1)
+    document_id = agent.add_document("雷达资料", "雷达数据验收要求包含完整性检查。")
+
+    try:
+        agent.delete_document(document_id)
+        assert False, "delete should require approval"
+    except PermissionError:
+        pass
+
+    assert agent.delete_document(document_id, approved=True) is True
+    assert agent.documents() == []

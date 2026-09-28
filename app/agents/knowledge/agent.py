@@ -19,6 +19,15 @@ class KnowledgeAgent:
         require_tool("knowledge", "document_catalog", "read")
         return self.store.list_documents()
 
+    def delete_document(self, document_id: int, *, approved: bool = False) -> bool:
+        require_tool(
+            "knowledge",
+            "document_delete",
+            "write",
+            approval_granted=approved,
+        )
+        return self.store.delete_document(document_id)
+
     def ask(self, question: str) -> KnowledgeAnswer:
         require_tool("knowledge", "vector_search", "read")
         sources = self.store.search(question, self.llm.embed, self.top_k)

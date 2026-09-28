@@ -9,7 +9,10 @@ def test_tool_policy_registry():
 
     assert any(p.name == "readonly_sql" and p.mode == "read" for p in policies)
     assert any(p.name == "document_ingest" and p.mode == "write" for p in policies)
-    assert all(p.approval_required is False for p in policies)
+    assert any(
+        p.name == "document_delete" and p.approval_required
+        for p in policies
+    )
 
 
 def test_tool_policy_filter():
@@ -42,3 +45,10 @@ def test_require_tool_blocks_pending_approval(monkeypatch):
 
     with pytest.raises(ToolPolicyError, match="人工审批"):
         require_tool("ops", "maintenance", "write")
+
+    assert require_tool(
+        "ops",
+        "maintenance",
+        "write",
+        approval_granted=True,
+    ).risk == "high"
