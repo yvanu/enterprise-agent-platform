@@ -1,3 +1,5 @@
+from math import ceil
+
 from pydantic import BaseModel
 
 from app.platform.runs import RunRecord
@@ -29,8 +31,11 @@ class AgentQualityMetric(BaseModel):
     runs: int
     success_rate: int
     avg_duration_ms: int
+    p50_duration_ms: int
+    p95_duration_ms: int
     eval_avg_score: int
     eval_pass_rate: int
+    error_types: dict[str, int]
 
 
 def evaluate_run(run: RunRecord) -> EvalResult:
@@ -76,19 +81,35 @@ def evaluate_runs(runs: list[RunRecord]) -> list[EvalResult]:
     return [evaluate_run(run) for run in runs]
 
 
+def _percentile(values: list[int], percentile: int) -> int:
+    if not values:
+        return 0
+    ordered = sorted(values)
+    index = max(0, ceil(percentile / 100 * len(ordered)) - 1)
+    return ordered[index]
+
+
 def summarize_quality(runs: list[RunRecord]) -> list[AgentQualityMetric]:
     metrics: list[AgentQualityMetric] = []
     for agent in sorted({run.agent for run in runs}):
         agent_runs = [run for run in runs if run.agent == agent]
         evals = evaluate_runs(agent_runs)
+        durations = [run.duration_ms for run in agent_runs]
+        errors: dict[str, int] = {}
+        for run in agent_runs:
+            if run.error_type:
+                errors[run.error_type] = errors.get(run.error_type, 0) + 1
         metrics.append(
             AgentQualityMetric(
                 agent=agent,
                 runs=len(agent_runs),
                 success_rate=round(sum(run.status == "ok" for run in agent_runs) / len(agent_runs) * 100),
-                avg_duration_ms=round(sum(run.duration_ms for run in agent_runs) / len(agent_runs)),
+                avg_duration_ms=round(sum(durations) / len(durations)),
+                p50_duration_ms=_percentile(durations, 50),
+                p95_duration_ms=_percentile(durations, 95),
                 eval_avg_score=round(sum(item.score for item in evals) / len(evals)),
                 eval_pass_rate=round(sum(item.passed for item in evals) / len(evals) * 100),
+                error_types=errors,
             )
         )
     return metrics

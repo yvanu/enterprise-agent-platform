@@ -293,7 +293,7 @@ async function loadRuns(){
     }else{
       $("evalSummary").innerHTML='<span class="chip">Eval 暂无样本</span>';
     }
-    $("qualityMetrics").innerHTML=metrics.length?metrics.map(x=>`<p><b>${esc(x.agent)}</b><br><span class="muted">${x.runs} runs · success ${x.success_rate}% · avg ${x.avg_duration_ms} ms · eval ${x.eval_avg_score} · eval pass ${x.eval_pass_rate}%</span></p>`).join(""):"";
+    $("qualityMetrics").innerHTML=metrics.length?metrics.map(x=>`<p><b>${esc(x.agent)}</b><br><span class="muted">${x.runs} runs · success ${x.success_rate}% · avg ${x.avg_duration_ms} ms · P50 ${x.p50_duration_ms} ms · P95 ${x.p95_duration_ms} ms · eval ${x.eval_avg_score} · eval pass ${x.eval_pass_rate}%${Object.keys(x.error_types||{}).length?" · errors "+esc(JSON.stringify(x.error_types)):""}</span></p>`).join(""):"";
   }catch(e){$("recentRuns").textContent=e.message}
 }
 async function loadRunDetail(id){

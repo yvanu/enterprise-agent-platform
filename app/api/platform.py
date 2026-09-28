@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import PlainTextResponse
 
 from app.platform.approvals import (
     ApprovalCreate,
@@ -50,6 +51,28 @@ def evals(
 @router.get("/metrics", response_model=list[AgentQualityMetric])
 def metrics(limit: int = Query(200, ge=1, le=200)) -> list[AgentQualityMetric]:
     return summarize_quality(run_store.list(limit=limit))
+
+
+@router.get("/metrics/prometheus", response_class=PlainTextResponse)
+def prometheus_metrics(limit: int = Query(200, ge=1, le=200)) -> str:
+    lines: list[str] = []
+    for metric in summarize_quality(run_store.list(limit=limit)):
+        label = f'agent="{metric.agent}"'
+        lines.extend(
+            [
+                f'enterprise_agent_runs_total{{{label}}} {metric.runs}',
+                f'enterprise_agent_success_ratio{{{label}}} {metric.success_rate / 100}',
+                f'enterprise_agent_duration_ms{{{label},quantile="0.5"}} {metric.p50_duration_ms}',
+                f'enterprise_agent_duration_ms{{{label},quantile="0.95"}} {metric.p95_duration_ms}',
+                f'enterprise_agent_eval_score{{{label}}} {metric.eval_avg_score}',
+                f'enterprise_agent_eval_pass_ratio{{{label}}} {metric.eval_pass_rate / 100}',
+            ]
+        )
+        for error_type, count in metric.error_types.items():
+            lines.append(
+                f'enterprise_agent_errors_total{{{label},error_type="{error_type}"}} {count}'
+            )
+    return "\n".join(lines) + ("\n" if lines else "")
 
 
 @router.get("/approvals", response_model=list[ApprovalRecord])

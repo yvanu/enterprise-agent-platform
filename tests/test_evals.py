@@ -57,5 +57,8 @@ def test_quality_metrics_group_by_agent():
     assert metric.runs == 2
     assert metric.success_rate == 50
     assert metric.avg_duration_ms == 20
+    assert metric.p50_duration_ms == 10
+    assert metric.p95_duration_ms == 30
     assert metric.eval_avg_score == 57
     assert metric.eval_pass_rate == 50
+    assert metric.error_types == {"RuntimeError": 1}
