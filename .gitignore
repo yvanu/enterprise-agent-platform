@@ -5,3 +5,6 @@ __pycache__/
 .ruff_cache/
 .env
 data/*.db
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

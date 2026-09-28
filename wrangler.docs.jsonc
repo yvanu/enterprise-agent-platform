@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "enterprise-agent-docs-worker",
+  "compatibility_date": "2026-09-28",
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "docs.agent.majhoon.site",
+      "custom_domain": true
+    }
+  ],
+  "assets": {
+    "directory": "./docs/.vitepress/dist"
+  }
+}
