@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse
 from app.api.data import db, router as data_router
 from app.api.knowledge import router as knowledge_router
 from app.api.ops import router as ops_router
+from app.api.platform import router as platform_router
 from app.core.config import get_settings
 from app.db.demo import initialize_demo_database
 
@@ -17,6 +18,7 @@ app = FastAPI(title=settings.app_name)
 app.include_router(data_router)
 app.include_router(knowledge_router)
 app.include_router(ops_router)
+app.include_router(platform_router)
 
 
 @app.get("/", include_in_schema=False)

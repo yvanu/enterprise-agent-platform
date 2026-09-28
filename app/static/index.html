@@ -38,6 +38,14 @@
     <button class="tab" data-tab="ops">Ops Agent</button>
   </nav>
 
+  <div class="card">
+    <div class="actions" style="justify-content:space-between;margin-top:0">
+      <h3 style="margin:0">Tool Policy</h3>
+      <span class="muted">平台统一工具权限清单</span>
+    </div>
+    <div id="toolPolicies" class="chips" style="margin-top:12px">加载中...</div>
+  </div>
+
   <section class="panel active" id="panel-data">
     <div class="grid">
       <div>
@@ -187,6 +195,12 @@ async function loadKnowledgeDocs(){
     $("knowledgeDocs").innerHTML=docs.length?docs.map(x=>`<p><b>${esc(x.title)}</b><br><span class="muted">#${x.document_id} · ${x.chunks} chunks</span></p>`).join(""):"暂无文档";
   }catch(e){$("knowledgeDocs").textContent=e.message}
 }
+async function loadToolPolicies(){
+  try{
+    const policies=await api("/api/v1/platform/tools");
+    $("toolPolicies").innerHTML=policies.map(x=>`<span class="chip">${esc(x.agent)} · ${esc(x.name)} · ${esc(x.risk)} · ${esc(x.mode)}</span>`).join("");
+  }catch(e){$("toolPolicies").textContent=e.message}
+}
 async function loadOps(){
   try{
     const d=await api("/api/v1/ops/snapshot"), m=d.memory||{}, disk=d.disk||{};
@@ -299,7 +313,7 @@ $("opsAsk").onclick=async()=>{
 
 (async()=>{
   try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
-  await loadSources();loadSchema();loadKnowledgeDocs();loadOps();
+  await loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadOps();
 })();
 </script>
 </body>

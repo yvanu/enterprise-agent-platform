@@ -1,6 +1,6 @@
 # Enterprise Agent Platform
 
-面向企业场景的多 Agent 平台。三个业务 Agent 共用同一套 LLM Runtime、配置和 API 服务。
+面向企业场景的多 Agent 平台。三个业务 Agent 共用同一套 LLM Runtime、配置、Tool Policy 和 API 服务。
 
 ## 三个 Agent
 
@@ -55,7 +55,8 @@ app/
 │   ├── knowledge/
 │   └── ops/
 ├── platform/
-│   └── llm.py          # Chat + Embedding，共享 Runtime
+│   ├── llm.py          # Chat + Embedding，共享 Runtime
+│   └── policy.py       # Tool 风险与权限清单
 ├── api/
 │   ├── data.py
 │   ├── knowledge.py
@@ -107,6 +108,9 @@ EMBEDDING_MODEL=
 
 ## API
 
+### Platform
+- `GET /api/v1/platform/tools`：统一 Tool Policy 清单
+
 ### Data
 - `GET /api/v1/data/sources`
 - `GET /api/v1/data/schema?source=default`
@@ -131,4 +135,4 @@ EMBEDDING_MODEL=
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-Ops Agent 当前只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。需要写操作时再引入明确的 Tool 风险等级和 Human-in-the-loop。
+平台维护统一 Tool Policy，记录所属 Agent、风险等级、读写模式和是否需要审批。Ops Agent 当前只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。真正增加高风险写操作时再接 Human-in-the-loop 审批流。
