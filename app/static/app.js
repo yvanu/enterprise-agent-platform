@@ -67,7 +67,12 @@ async function api(url, options = {}) {
   const data = type.includes("application/json") ? await response.json() : await response.text();
   if (!response.ok) {
     const detail = data?.error?.message || data?.detail || (typeof data === "string" ? data : JSON.stringify(data));
-    throw new Error(detail);
+    const error = new Error(detail);
+    error.status = response.status;
+    if (response.status === 401) {
+      location.replace("/login");
+    }
+    throw error;
   }
   return data;
 }
@@ -117,11 +122,17 @@ async function loadIdentity() {
     $("sidebarUser").textContent = me.username;
     $("sidebarRole").textContent = me.role;
     $("homeUser").textContent = me.username;
+    const initials = me.username.slice(0, 2).toUpperCase();
+    $$(".avatar").forEach(el => el.textContent = initials);
     if ($("identityName")) $("identityName").textContent = me.username;
     if ($("identityRole")) $("identityRole").textContent = me.role;
+    $("accountMenuName").textContent = me.username;
+    $("accountMenuRole").textContent = me.role;
+    return true;
   } catch (error) {
     $("sidebarUser").textContent = "Sign in";
     $("sidebarRole").textContent = "authentication required";
+    return false;
   }
 }
 
@@ -856,6 +867,20 @@ $("saveRuntimeSettings").onclick = saveRuntimeSettings;
 $("saveToken").onclick = () => {
   localStorage.setItem("apiToken",$("apiToken").value.trim()); toast("Browser token saved"); loadIdentity(); refreshPage(state.page);
 };
+$("accountButton").onclick = event => {
+  event.stopPropagation();
+  $("accountMenu").classList.toggle("hidden");
+};
+$("logoutButton").onclick = async () => {
+  try { await fetch("/api/v1/auth/logout", {method:"POST", credentials:"same-origin"}); }
+  finally {
+    localStorage.removeItem("apiToken");
+    location.replace("/login");
+  }
+};
+document.addEventListener("click", event => {
+  if (!event.target.closest("#accountMenu") && !event.target.closest("#accountButton")) $("accountMenu").classList.add("hidden");
+});
 
 $$("[data-close-modal]").forEach(b => b.onclick = () => closeModal(b.dataset.closeModal));
 $$(".modal-backdrop").forEach(backdrop => backdrop.onclick = e => { if (e.target === backdrop) closeModal(backdrop.id); });
@@ -879,7 +904,8 @@ document.addEventListener("keydown", e => {
 });
 
 (async function boot() {
-  await loadIdentity();
+  if (!await loadIdentity()) return;
+  document.body.classList.remove("auth-pending");
   await updateApprovalCountFromApi();
   const page = location.hash.slice(1);
   navigate(PAGES[page] ? page : "home");

@@ -18,6 +18,37 @@ def test_parse_identity():
     assert identity.role == "operator"
 
 
+def test_console_login_and_logout(monkeypatch):
+    monkeypatch.setattr(auth_module.settings, "auth_enabled", True)
+    monkeypatch.setattr(auth_module.settings, "console_username", "demo")
+    monkeypatch.setattr(auth_module.settings, "console_password", auth_module.settings.console_password.__class__("demo"))
+    monkeypatch.setattr(auth_module.settings, "console_role", "admin")
+
+    client = TestClient(app)
+
+    denied = client.post(
+        "/api/v1/auth/login",
+        json={"username": "demo", "password": "wrong"},
+    )
+    assert denied.status_code == 401
+
+    login = client.post(
+        "/api/v1/auth/login",
+        json={"username": "demo", "password": "demo"},
+    )
+    assert login.status_code == 200
+    assert login.json()["identity"] == {"username": "demo", "role": "admin"}
+    assert "eap_session=" in login.headers["set-cookie"]
+    assert "HttpOnly" in login.headers["set-cookie"]
+
+    me = client.get("/api/v1/auth/me")
+    assert me.status_code == 200
+    assert me.json() == {"username": "demo", "role": "admin"}
+
+    assert client.post("/api/v1/auth/logout").status_code == 200
+    assert client.get("/api/v1/auth/me").status_code == 401
+
+
 def test_auth_and_rbac(monkeypatch, tmp_path):
     monkeypatch.setattr(auth_module.settings, "auth_enabled", True)
     monkeypatch.setattr(

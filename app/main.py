@@ -37,6 +37,11 @@ def index() -> FileResponse:
     return FileResponse(static_dir / "index.html")
 
 
+@app.get("/login", include_in_schema=False)
+def login_page() -> FileResponse:
+    return FileResponse(static_dir / "login.html")
+
+
 @app.get("/health")
 @app.get("/health/live")
 def health() -> dict[str, str]:

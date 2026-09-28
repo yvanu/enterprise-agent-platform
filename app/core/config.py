@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     app_env: str = "development"
     auth_enabled: bool = False
     auth_tokens: dict[str, str] = Field(default_factory=dict, repr=False)
+    console_username: str = "demo"
+    console_password: SecretStr = SecretStr("demo")
+    console_role: str = "admin"
+    session_max_age_seconds: int = Field(default=12 * 60 * 60, ge=300, le=30 * 24 * 60 * 60)
     rate_limit_per_minute: int = Field(default=0, ge=0, le=100000)
 
     database_url: str = "sqlite:///./data/demo.db"
@@ -64,6 +68,8 @@ def validate_settings(settings: Settings) -> None:
 
     if settings.auth_enabled and not settings.auth_tokens:
         errors.append("AUTH_ENABLED=true 时必须配置 AUTH_TOKENS")
+    if settings.console_role not in VALID_ROLES:
+        errors.append("CONSOLE_ROLE 必须是 user/operator/approver/admin")
     if production and not settings.auth_enabled:
         errors.append("生产环境必须启用 AUTH_ENABLED")
 

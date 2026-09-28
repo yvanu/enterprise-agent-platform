@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Enterprise Agent</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260928-3">
+  <link rel="stylesheet" href="/static/app.css?v=20260928-4">
 </head>
-<body>
+<body class="auth-pending">
 <svg class="svg-sprite" aria-hidden="true">
   <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M9.5 20v-6h5v6"/></symbol>
   <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 3v4M8 12h.01M16 12h.01M8 16h8"/></symbol>
@@ -74,9 +74,15 @@
       <div class="top-actions">
         <button class="icon-btn" title="Help"><svg><use href="#i-help"/></svg></button>
         <button class="icon-btn" title="Notifications"><svg><use href="#i-bell"/></svg></button>
-        <div class="avatar">AD</div>
+        <button class="avatar account-button" id="accountButton" aria-label="Account menu">AD</button>
       </div>
     </header>
+
+    <div class="account-menu hidden" id="accountMenu">
+      <div class="account-menu-user"><strong id="accountMenuName">demo</strong><span id="accountMenuRole">admin</span></div>
+      <button data-go="settings"><svg><use href="#i-settings"/></svg> Settings</button>
+      <button id="logoutButton"><svg><use href="#i-back"/></svg> Sign out</button>
+    </div>
 
     <div id="toast" class="toast" role="status"></div>
 
@@ -382,6 +388,6 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
   </div>
 </div>
 
-<script src="/static/app.js?v=20260928-3"></script>
+<script src="/static/app.js?v=20260928-5"></script>
 </body>
 </html>

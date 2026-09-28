@@ -27,6 +27,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
 body{font-size:13px;-webkit-font-smoothing:antialiased}
+body.auth-pending .app-shell{visibility:hidden}
 button,input,textarea,select{font:inherit;color:inherit}
 button{cursor:pointer}
 svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -64,6 +65,10 @@ svg{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-l
 }
 .command-search:hover{border-color:#cfd3d8;background:#fff}.command-search svg{width:14px;height:14px}.command-search span{flex:1}.command-search kbd{font:10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid #dfe2e6;background:#fff;border-radius:4px;padding:3px 5px;color:#80858f}
 .top-actions{display:flex;align-items:center;gap:5px}.icon-btn{width:30px;height:30px;border:0;background:transparent;border-radius:6px;display:grid;place-items:center;color:#656b75}.icon-btn:hover{background:var(--surface-hover);color:#24262b}.icon-btn svg{width:16px;height:16px}
+.account-button{border:0;cursor:pointer;padding:0}.account-button:hover{box-shadow:0 0 0 3px #eef2f8}
+.account-menu{position:fixed;right:18px;top:46px;width:190px;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 14px 36px rgba(15,23,42,.12);padding:6px;z-index:80}
+.account-menu-user{padding:8px 9px 9px;border-bottom:1px solid var(--border);margin-bottom:4px}.account-menu-user strong{display:block;font-size:10.5px}.account-menu-user span{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+.account-menu button{width:100%;height:31px;border:0;background:transparent;border-radius:5px;padding:0 8px;display:flex;align-items:center;gap:8px;text-align:left;font-size:10.5px;color:#464b53}.account-menu button:hover{background:#f4f5f7}.account-menu button svg{width:14px;height:14px;color:#777d87}
 
 .page{display:none;max-width:1260px;margin:0 auto;padding:34px 34px 64px}.page.active{display:block}
 .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:26px}

@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Sign in · Enterprise Agent</title>
+  <link rel="stylesheet" href="/static/login.css?v=20260928-1">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="login-brand-panel">
+      <div class="brand">
+        <div class="brand-mark">EA</div>
+        <div><strong>Enterprise Agent</strong><span>Control Plane</span></div>
+      </div>
+
+      <div class="brand-content">
+        <span class="eyebrow">ENTERPRISE AI OPERATIONS</span>
+        <h1>Build, operate, and govern agents from one control plane.</h1>
+        <p>Manage agent execution, knowledge, data access, observability, approvals, and runtime policies in one place.</p>
+
+        <div class="feature-grid">
+          <div><span>01</span><strong>Agent operations</strong><p>Inspect runs, trace execution, and evaluate quality.</p></div>
+          <div><span>02</span><strong>Governed actions</strong><p>Human approval for sensitive tools and infrastructure changes.</p></div>
+          <div><span>03</span><strong>Connected resources</strong><p>Models, databases, knowledge, and observability integrations.</p></div>
+        </div>
+      </div>
+
+      <div class="brand-footer">Enterprise Agent Platform · Demo Environment</div>
+    </section>
+
+    <section class="login-form-panel">
+      <div class="login-card">
+        <div class="mobile-brand">
+          <div class="brand-mark">EA</div>
+          <strong>Enterprise Agent</strong>
+        </div>
+
+        <header>
+          <h2>Sign in</h2>
+          <p>Access the Enterprise Agent control plane.</p>
+        </header>
+
+        <form id="loginForm">
+          <label>
+            Username
+            <input id="username" name="username" autocomplete="username" value="demo" autofocus>
+          </label>
+          <label>
+            Password
+            <input id="password" name="password" type="password" autocomplete="current-password" value="demo">
+          </label>
+
+          <div class="demo-hint">
+            <span>Demo credentials</span>
+            <strong>demo / demo</strong>
+          </div>
+
+          <button id="loginButton" type="submit">Sign in</button>
+          <div id="loginError" class="login-error" role="alert"></div>
+        </form>
+      </div>
+
+      <div class="login-meta">
+        <span>Protected by session-based authentication</span>
+        <span>v0.1</span>
+      </div>
+    </section>
+  </main>
+  <script src="/static/login.js?v=20260928-1"></script>
+</body>
+</html>
