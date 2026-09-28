@@ -22,3 +22,7 @@ def test_run_store_records_and_filters(tmp_path):
     assert runs[0].error_type == "RuntimeError"
     assert runs[1].trace[0].name == "schema"
     assert [run.agent for run in store.list(agent="data")] == ["data"]
+    data_run = store.get(runs[1].id)
+    assert data_run is not None
+    assert data_run.trace[0].name == "schema"
+    assert store.get(99999) is None

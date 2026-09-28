@@ -17,7 +17,7 @@
     .muted{font-size:13px;color:#98a2b3}.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:5px 9px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:12px}
     .trace{display:grid;gap:8px}.trace-item{display:grid;grid-template-columns:82px 150px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #f2f4f7;font-size:13px}.trace-item:last-child{border:0}.ok{color:#027a48}.error{color:#b42318}
     .metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.metric{background:#f8fafc;border:1px solid #eaecf0;border-radius:10px;padding:12px}.metric b{display:block;font-size:20px;margin-top:4px}
-    .source{padding:10px 0;border-bottom:1px solid #eaecf0}.source:last-child{border:0}.bars{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:130px 1fr 70px;gap:10px;align-items:center;font-size:13px}.bar-track{height:12px;background:#f2f4f7;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:#1570ef;border-radius:999px}
+    .source{padding:10px 0;border-bottom:1px solid #eaecf0}.source:last-child{border:0}.bars{display:grid;gap:9px}.bar-row{display:grid;grid-template-columns:130px 1fr 70px;gap:10px;align-items:center;font-size:13px}.bar-track{height:12px;background:#f2f4f7;border-radius:999px;overflow:hidden}.bar-fill{height:100%;background:#1570ef;border-radius:999px}.run-link{padding:0;background:none;color:#1570ef;border:0;font:inherit;font-weight:700}.run-detail{margin-top:12px;padding-top:12px;border-top:1px solid #eaecf0}
     @media(max-width:800px){.grid,.metric-grid{grid-template-columns:1fr}.top{display:block}.trace-item{grid-template-columns:1fr}}
   </style>
 </head>
@@ -55,6 +55,7 @@
         <div id="evalSummary" class="chips" style="margin-top:12px"></div>
         <div id="qualityMetrics" style="margin-top:12px"></div>
         <div id="recentRuns" class="muted" style="margin-top:12px">加载中...</div>
+        <div id="runDetail" class="run-detail muted">点击 Run ID 查看 Trace 与 Eval 明细。</div>
       </div>
       <div class="card">
         <div class="actions" style="justify-content:space-between;margin-top:0">
@@ -228,7 +229,8 @@ async function loadRuns(){
       api("/api/v1/platform/evals?limit=20"),
       api("/api/v1/platform/metrics")
     ]);
-    $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}</span></p>`).join(""):"暂无运行记录";
+    $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><button class="run-link" data-run-id="${x.id}">#${x.id}</button> · <b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}</span></p>`).join(""):"暂无运行记录";
+    $("recentRuns").querySelectorAll("[data-run-id]").forEach(button=>button.onclick=()=>loadRunDetail(button.dataset.runId));
     if(evals.length){
       const passed=evals.filter(x=>x.passed).length;
       const avg=Math.round(evals.reduce((sum,x)=>sum+x.score,0)/evals.length);
@@ -238,6 +240,16 @@ async function loadRuns(){
     }
     $("qualityMetrics").innerHTML=metrics.length?metrics.map(x=>`<p><b>${esc(x.agent)}</b><br><span class="muted">${x.runs} runs · success ${x.success_rate}% · avg ${x.avg_duration_ms} ms · eval ${x.eval_avg_score} · eval pass ${x.eval_pass_rate}%</span></p>`).join(""):"";
   }catch(e){$("recentRuns").textContent=e.message}
+}
+async function loadRunDetail(id){
+  $("runDetail").textContent="加载 Run #"+id+"...";
+  try{
+    const d=await api("/api/v1/platform/runs/"+encodeURIComponent(id));
+    const run=d.run, ev=d.eval;
+    const trace=run.trace.length?run.trace.map(x=>`<div class="trace-item"><span class="${x.status==="error"?"error":"ok"}">${esc(x.kind)}</span><b>${esc(x.name)}</b><span>${esc(x.detail)}</span></div>`).join(""):'<span class="muted">无 Trace；失败类型：'+esc(run.error_type||"-")+'</span>';
+    const checks=ev.checks.map(x=>`<span class="${x.passed?"ok":"error"}">${x.passed?"PASS":"FAIL"}</span> ${esc(x.name)} · ${esc(x.detail)}`).join("<br>");
+    $("runDetail").innerHTML=`<b>Run #${run.id} · ${esc(run.agent)}</b><br><span class="muted">${esc(run.status)} · ${run.duration_ms} ms · Eval ${ev.score}</span><div class="trace" style="margin-top:10px">${trace}</div><div style="margin-top:10px">${checks}</div>`;
+  }catch(e){$("runDetail").textContent=e.message}
 }
 async function loadOps(){
   try{

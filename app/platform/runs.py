@@ -65,6 +65,30 @@ class RunStore:
             )
         return int(cursor.lastrowid)
 
+    @staticmethod
+    def _record(row: tuple) -> RunRecord:
+        return RunRecord(
+            id=row[0],
+            agent=row[1],
+            status=row[2],
+            duration_ms=row[3],
+            trace=[TraceStep(**item) for item in json.loads(row[4])],
+            error_type=row[5],
+            created_at=row[6],
+        )
+
+    def get(self, run_id: int) -> RunRecord | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT id, agent, status, duration_ms, trace_json, error_type, created_at
+                FROM agent_runs
+                WHERE id = ?
+                """,
+                (run_id,),
+            ).fetchone()
+        return self._record(row) if row else None
+
     def list(self, limit: int = 50, agent: str | None = None) -> list[RunRecord]:
         limit = max(1, min(limit, 200))
         sql = """
@@ -81,18 +105,7 @@ class RunStore:
         with self._connect() as conn:
             rows = conn.execute(sql, params).fetchall()
 
-        return [
-            RunRecord(
-                id=row[0],
-                agent=row[1],
-                status=row[2],
-                duration_ms=row[3],
-                trace=[TraceStep(**item) for item in json.loads(row[4])],
-                error_type=row[5],
-                created_at=row[6],
-            )
-            for row in rows
-        ]
+        return [self._record(row) for row in rows]
 
 
 run_store = RunStore(get_settings().platform_db_path)

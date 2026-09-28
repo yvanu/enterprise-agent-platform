@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
-from app.platform.evals import AgentQualityMetric, EvalResult, evaluate_runs, summarize_quality
+from app.platform.evals import AgentQualityMetric, EvalResult, evaluate_run, evaluate_runs, summarize_quality
 from app.platform.policy import ToolPolicy, tool_policies
 from app.platform.regression import RegressionReport, run_regression_suite
 from app.platform.runs import RunRecord, run_store
@@ -20,6 +20,14 @@ def runs(
     agent: str | None = Query(default=None),
 ) -> list[RunRecord]:
     return run_store.list(limit=limit, agent=agent)
+
+
+@router.get("/runs/{run_id}")
+def run_detail(run_id: int) -> dict:
+    run = run_store.get(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run 不存在")
+    return {"run": run, "eval": evaluate_run(run)}
 
 
 @router.get("/evals", response_model=list[EvalResult])
