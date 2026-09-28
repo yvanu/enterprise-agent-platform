@@ -228,7 +228,7 @@ async function api(url,options={}){
   const token=$("apiToken")?.value.trim();
   options.headers={...(token?{Authorization:"Bearer "+token}:{}),...(options.headers||{})};
   const r=await fetch(url,options), data=await r.json();
-  if(!r.ok) throw new Error(data.detail||JSON.stringify(data));
+  if(!r.ok){const e=data.error;throw new Error((e?.message||data.detail||JSON.stringify(data))+(e?.request_id?" · request "+e.request_id:""))}
   return data;
 }
 const post=(url,body)=>api(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
@@ -342,7 +342,7 @@ async function loadRuns(){
       api("/api/v1/platform/evals?limit=20"),
       api("/api/v1/platform/metrics")
     ]);
-    $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><button class="run-link" data-run-id="${x.id}">#${x.id}</button> · <b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}</span></p>`).join(""):"暂无运行记录";
+    $("recentRuns").innerHTML=runs.length?runs.map(x=>`<p><button class="run-link" data-run-id="${x.id}">#${x.id}</button> · <b>${esc(x.agent)}</b> · <span class="${x.status==="error"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${x.duration_ms} ms · ${esc(x.created_at)}${x.error_type?" · "+esc(x.error_type):""}${x.request_id?" · req "+esc(x.request_id.slice(0,8)):""}${x.correlation_id?" · corr "+esc(x.correlation_id):""}</span></p>`).join(""):"暂无运行记录";
     $("recentRuns").querySelectorAll("[data-run-id]").forEach(button=>button.onclick=()=>loadRunDetail(button.dataset.runId));
     if(evals.length){
       const passed=evals.filter(x=>x.passed).length;
@@ -361,7 +361,7 @@ async function loadRunDetail(id){
     const run=d.run, ev=d.eval;
     const trace=run.trace.length?run.trace.map(x=>`<div class="trace-item"><span class="${x.status==="error"?"error":"ok"}">${esc(x.kind)}</span><b>${esc(x.name)}</b><span>${esc(x.detail)}</span></div>`).join(""):'<span class="muted">无 Trace；失败类型：'+esc(run.error_type||"-")+'</span>';
     const checks=ev.checks.map(x=>`<span class="${x.passed?"ok":"error"}">${x.passed?"PASS":"FAIL"}</span> ${esc(x.name)} · ${esc(x.detail)}`).join("<br>");
-    $("runDetail").innerHTML=`<b>Run #${run.id} · ${esc(run.agent)}</b><br><span class="muted">${esc(run.status)} · ${run.duration_ms} ms · Eval ${ev.score}</span><div class="trace" style="margin-top:10px">${trace}</div><div style="margin-top:10px">${checks}</div>`;
+    $("runDetail").innerHTML=`<b>Run #${run.id} · ${esc(run.agent)}</b><br><span class="muted">${esc(run.status)} · ${run.duration_ms} ms · Eval ${ev.score}${run.request_id?" · request "+esc(run.request_id):""}${run.correlation_id?" · correlation "+esc(run.correlation_id):""}</span><div class="trace" style="margin-top:10px">${trace}</div><div style="margin-top:10px">${checks}</div>`;
   }catch(e){$("runDetail").textContent=e.message}
 }
 async function loadOps(){

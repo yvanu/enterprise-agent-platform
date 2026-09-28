@@ -11,7 +11,7 @@
 - 设计并实现 Data、Knowledge、Ops 三类业务 Agent：自然语言 SQL 分析、RAG 知识问答、系统/日志/Prometheus 运维诊断。
 - 设计 Tool Policy 与 Human-in-the-loop：按 Tool 风险等级控制读写能力，高风险操作绑定审批目标并单次消费授权，禁止任意 Shell 和任意写 SQL。
 - 实现 Bearer Token + RBAC，区分 user/operator/approver/admin，并记录审批申请人、审批人、执行人。
-- 构建 Agent Run/Trace、确定性 Eval、离线 Regression Suite、P50/P95 和 Prometheus 指标，支持失败链路定位和质量回归。
+- 构建 Agent Run/Trace、Request ID/Correlation ID、统一错误模型、JSON 结构化日志、确定性 Eval、离线 Regression Suite、P50/P95 和 Prometheus 指标，支持从 HTTP 请求追踪到 Agent Run 并完成失败定位和质量回归。
 - 实现真实 Supervisor 故障调查链路：Ops 获取运行证据、Knowledge 检索运维手册、Data 查询历史数据，最后综合结论，子 Agent 局部失败时支持降级。
 - 使用 FastAPI、SQLAlchemy、SQLite/PostgreSQL/Kingbase、OpenAI-compatible API；提供 Docker Compose、GitHub Actions、pip-audit 和标准库压测脚本。
 
@@ -99,7 +99,7 @@ Prompt 不是安全边界。真正边界在 Tool 层：Data 只有只读 SQL；O
 
 ### 5. Agent 怎么做可观测性？
 
-每次 Agent 调用生成 Run，记录 status、duration、trace、error_type；平台再聚合成功率、平均耗时、P50/P95、Eval 分和错误类型，并提供 Prometheus 文本出口。
+每个 HTTP 请求生成 Request ID，并接受可选 Correlation ID；两者会进入结构化日志和该请求触发的 Agent Run。Run 记录 status、duration、trace、error_type，再聚合成功率、平均耗时、P50/P95、Eval 分和错误类型，并提供 Prometheus 文本出口。这样可以从用户报错里的 Request ID 直接定位 Run/Trace。
 
 ### 6. 为什么 Run 不存用户问题原文？
 

@@ -9,7 +9,11 @@ def test_offline_demo_api_records_supervisor_run(monkeypatch, tmp_path):
     store = RunStore(str(tmp_path / "platform.db"))
     monkeypatch.setattr(runs_module, "run_store", store)
 
-    response = TestClient(app).post("/api/v1/platform/demo/incident", json={})
+    response = TestClient(app).post(
+        "/api/v1/platform/demo/incident",
+        json={},
+        headers={"X-Correlation-ID": "demo-flow-1"},
+    )
 
     assert response.status_code == 200
     payload = response.json()
@@ -24,3 +28,5 @@ def test_offline_demo_api_records_supervisor_run(monkeypatch, tmp_path):
     assert len(runs) == 1
     assert runs[0].status == "ok"
     assert runs[0].trace[-1].name == "synthesize"
+    assert runs[0].request_id == response.headers["X-Request-ID"]
+    assert runs[0].correlation_id == "demo-flow-1"

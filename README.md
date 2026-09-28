@@ -66,7 +66,8 @@ app/
 │   ├── llm.py          # Chat + Embedding，共享 Runtime
 │   ├── policy.py       # Tool 风险与权限清单
 │   ├── approvals.py    # Human-in-the-loop 审批与单次授权
-│   ├── runs.py         # Agent Run 审计与耗时记录
+│   ├── runs.py         # Agent Run 审计、Request/Correlation 关联
+│   ├── observability.py# 统一错误模型、请求上下文、结构化日志
 │   ├── evals.py        # 基于 Trace 的确定性 Eval
 │   └── regression.py   # 固定业务样本回归测试
 ├── api/
@@ -131,6 +132,18 @@ AUTH_TOKENS={"user-token":"alice:user","operator-token":"operator:operator","app
 ```
 
 角色分工：`user` 可使用普通只读 Agent 能力；`operator` 可写入知识库、发起审批和执行已批准动作；`approver` 可查看并审批请求；`admin` 拥有全部权限。审批人由认证身份确定，客户端不能伪造审批人；非管理员不能审批自己发起的请求。
+
+## Request Trace 与统一错误模型
+
+每个 HTTP 请求都会生成新的 `X-Request-ID`；调用方可以通过 `X-Correlation-ID` 传入跨服务/跨步骤关联 ID。两者都会回写到响应头，并写入该请求触发的 Agent Run，便于从 HTTP 请求追踪到 Run/Trace。HTTP 请求和 Agent Run 同时输出 JSON 结构化日志。
+
+API 错误统一为：
+
+```json
+{"error":{"code":"NOT_FOUND","message":"Run 不存在","request_id":"...","correlation_id":"...","details":null}}
+```
+
+校验错误会使用 `VALIDATION_ERROR` 并在 `details` 中返回字段错误；未处理异常只返回 `INTERNAL_ERROR`，不把服务端堆栈泄露给客户端。
 
 ## CI / Regression
 
@@ -242,4 +255,4 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、P50/P95、错误类型、平均 Eval 分和 Eval 通过率，并提供 Prometheus 文本格式出口。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先由 `operator/admin` 创建审批、再由 `approver/admin` 通过认证身份批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除；请求人、审批人、执行人都会写入审批审计记录。Ops Agent 除只读系统信息、服务端白名单日志、Prometheus、固定 `docker ps` / `kubectl get pods` 外，现已支持 `OPS_ALLOWED_SERVICES` 白名单内的 `systemctl restart <service>`。该 Tool 标记为 `high/write/approval_required`，审批 ID 会绑定 `service:<name>` 并单次消费；仍不接受任意 Shell。未来配置变更、Kubernetes rollout/scale 等动作继续复用同一审批机制。
+平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、P50/P95、错误类型、平均 Eval 分和 Eval 通过率，并提供 Prometheus 文本格式出口。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 持久化 Agent 类型、状态、耗时、Trace、异常类型、Request ID 和 Correlation ID，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先由 `operator/admin` 创建审批、再由 `approver/admin` 通过认证身份批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除；请求人、审批人、执行人都会写入审批审计记录。Ops Agent 除只读系统信息、服务端白名单日志、Prometheus、固定 `docker ps` / `kubectl get pods` 外，现已支持 `OPS_ALLOWED_SERVICES` 白名单内的 `systemctl restart <service>`。该 Tool 标记为 `high/write/approval_required`，审批 ID 会绑定 `service:<name>` 并单次消费；仍不接受任意 Shell。未来配置变更、Kubernetes rollout/scale 等动作继续复用同一审批机制。

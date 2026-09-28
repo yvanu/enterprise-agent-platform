@@ -4,7 +4,8 @@
 
 ```mermaid
 flowchart TB
-  CLIENT[Web UI / API Client] --> AUTH[Bearer Auth + RBAC]
+  CLIENT[Web UI / API Client] --> HTTP[Request ID / Correlation ID / Error Model]
+  HTTP --> AUTH[Bearer Auth + RBAC]
 
   AUTH --> DATA[Data Agent]
   AUTH --> KNOW[Knowledge Agent]
@@ -31,6 +32,7 @@ flowchart TB
   OPS --> RUNS
   SUP --> RUNS
 
+  HTTP --> LOGS[Structured JSON Logs]
   RUNS --> EVAL[Deterministic Eval]
   EVAL --> METRICS[Quality Metrics / Prometheus]
 ```
@@ -103,6 +105,8 @@ Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The 
 | Knowledge visibility | role-filtered document scope |
 | Risky writes | Human Approval + single-use target-bound approval |
 | Ops commands | fixed arguments / server-side allowlists |
+| Request tracing | X-Request-ID + X-Correlation-ID propagated into Agent Run |
+| API errors | shared error envelope with stable code and request context |
 | Audit | Run/Trace + approval actor/requester/executor |
 | Prompt data retention | raw user question is not stored in Run history |
 

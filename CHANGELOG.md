@@ -4,6 +4,8 @@
 
 - Added Web/API one-click isolated incident demo backed by the actual Data, Knowledge, Ops, and Supervisor code paths.
 - Offline demo now records a Supervisor Run/Trace while keeping temporary demo data isolated.
+- Added per-request Request ID / Correlation ID propagation into Agent Run records.
+- Added unified API error envelopes and JSON structured HTTP/Agent Run logs.
 
 ## v0.1.0
 

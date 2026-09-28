@@ -12,12 +12,14 @@ from app.api.supervisor import router as supervisor_router
 from app.core.config import get_settings
 from app.db.demo import initialize_demo_database
 from app.platform.auth import current_identity
+from app.platform.observability import install_observability
 
 
 settings = get_settings()
 initialize_demo_database(db)
 
 app = FastAPI(title=settings.app_name)
+install_observability(app)
 app.include_router(auth_router)
 for router in (data_router, knowledge_router, ops_router, platform_router, supervisor_router):
     app.include_router(router, dependencies=[Depends(current_identity)])
