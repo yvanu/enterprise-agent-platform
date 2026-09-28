@@ -30,9 +30,11 @@
 - 检索结果作为上下文回答
 - 返回原始来源
 - 知识文档目录查询
+- 文档版本、标签和允许角色范围；更新文档时版本自动递增并重建分块/Embedding
+- 检索和文档目录按当前认证角色过滤
 - 知识文档删除采用 Human-in-the-loop 审批，审批通过后才能执行且审批单次消费
 
-当前采用进程内 O(n) 向量扫描，适合项目演示和小规模知识库。数据量真正变大时再替换 pgvector / Vectorize，不提前引入向量数据库。
+当前采用进程内 O(n) 向量扫描，适合项目演示和小规模知识库；访问范围在检索前按认证角色过滤。数据量真正变大时再替换 pgvector / Vectorize，不提前引入向量数据库。
 
 ### Ops Agent
 系统运行状态 → LLM 诊断。
@@ -152,7 +154,8 @@ EMBEDDING_MODEL=
 ### Knowledge
 - `GET /api/v1/knowledge/documents`
 - `DELETE /api/v1/knowledge/documents/{document_id}?approval_id=...`：消费已批准的删除审批后执行
-- `POST /api/v1/knowledge/documents`
+- `POST /api/v1/knowledge/documents`：支持 `tags` 和 `allowed_roles`
+- `PUT /api/v1/knowledge/documents/{document_id}`：增量更新文档并递增版本
 - `POST /api/v1/knowledge/documents/upload`
 - `POST /api/v1/knowledge/ask`
 

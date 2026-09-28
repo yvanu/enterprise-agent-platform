@@ -114,7 +114,13 @@ ORDER BY total DESC</textarea>
       <div>
         <div class="card">
           <h3>加入知识</h3>
+          <input id="docId" placeholder="文档 ID（留空新增，填写后更新文本版本）">
+          <div style="height:10px"></div>
           <input id="docTitle" placeholder="文档标题">
+          <div style="height:10px"></div>
+          <input id="docTags" placeholder="标签，逗号分隔，例如 运维,雷达">
+          <div style="height:10px"></div>
+          <input id="docRoles" value="user,operator,approver,admin" placeholder="允许角色，逗号分隔">
           <div style="height:10px"></div>
           <input id="docFile" type="file" accept=".txt,.md,.csv,.json,.pdf,.docx">
           <p class="muted">支持 txt、md、csv、json、PDF、DOCX；也可以直接粘贴文本。</p>
@@ -192,6 +198,7 @@ async function api(url,options={}){
   return data;
 }
 const post=(url,body)=>api(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+const put=(url,body)=>api(url,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const bytes=n=>n==null?"-":n>1073741824?(n/1073741824).toFixed(1)+" GB":n>1048576?(n/1048576).toFixed(1)+" MB":Math.round(n/1024)+" KB";
 $("apiToken").value=localStorage.getItem("apiToken")||"";
@@ -230,7 +237,7 @@ async function loadSchema(){
 async function loadKnowledgeDocs(){
   try{
     const docs=await api("/api/v1/knowledge/documents");
-    $("knowledgeDocs").innerHTML=docs.length?docs.map(x=>`<p><b>${esc(x.title)}</b><br><span class="muted">#${x.document_id} · ${x.chunks} chunks</span><br><button class="secondary" data-request-delete="${x.document_id}" data-title="${esc(x.title)}" style="margin-top:6px">申请删除</button></p>`).join(""):"暂无文档";
+    $("knowledgeDocs").innerHTML=docs.length?docs.map(x=>`<p><b>${esc(x.title)}</b><br><span class="muted">#${x.document_id} · v${x.version} · ${x.chunks} chunks${x.tags?.length?" · "+esc(x.tags.join(",")):""} · roles ${esc((x.allowed_roles||[]).join(","))}</span><br><button class="secondary" data-request-delete="${x.document_id}" data-title="${esc(x.title)}" style="margin-top:6px">申请删除</button></p>`).join(""):"暂无文档";
     $("knowledgeDocs").querySelectorAll("[data-request-delete]").forEach(button=>button.onclick=()=>requestDocumentDelete(button.dataset.requestDelete,button.dataset.title));
   }catch(e){$("knowledgeDocs").textContent=e.message}
 }
@@ -367,13 +374,17 @@ $("addDoc").onclick=async()=>{
   try{
     const file=$("docFile").files[0];
     let d;
+    const tags=$("docTags").value.split(",").map(x=>x.trim()).filter(Boolean);
+    const roles=$("docRoles").value.split(",").map(x=>x.trim()).filter(Boolean);
     if(file){
-      const form=new FormData();form.append("file",file);
+      const form=new FormData();form.append("file",file);form.append("tags",tags.join(","));form.append("allowed_roles",roles.join(","));
       d=await api("/api/v1/knowledge/documents/upload",{method:"POST",body:form});
+    }else if($("docId").value.trim()){
+      d=await put("/api/v1/knowledge/documents/"+encodeURIComponent($("docId").value.trim()),{title:$("docTitle").value,content:$("docContent").value,tags,allowed_roles:roles});
     }else{
-      d=await post("/api/v1/knowledge/documents",{title:$("docTitle").value,content:$("docContent").value});
+      d=await post("/api/v1/knowledge/documents",{title:$("docTitle").value,content:$("docContent").value,tags,allowed_roles:roles});
     }
-    $("docStatus").textContent="已写入，document_id="+d.document_id;
+    $("docStatus").textContent="已写入，document_id="+d.document_id+(d.version?"，version="+d.version:"");
     loadKnowledgeDocs();
   }catch(e){$("docStatus").textContent=e.message}
 };

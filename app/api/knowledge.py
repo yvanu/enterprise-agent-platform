@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from app.agents.knowledge.agent import KnowledgeAgent
 from app.agents.knowledge.models import AskRequest, DocumentRequest, KnowledgeAnswer
@@ -8,7 +8,7 @@ from app.agents.knowledge.parser import extract_text
 from app.agents.knowledge.store import KnowledgeStore
 from app.core.config import get_settings
 from app.platform.approvals import approval_store
-from app.platform.auth import Identity, require_roles
+from app.platform.auth import Identity, ROLES, current_identity, require_roles
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
 from app.platform.runs import start_run
 
@@ -22,9 +22,20 @@ agent = KnowledgeAgent(
 )
 
 
+def _form_roles(value: str) -> list[str] | None:
+    if not value.strip():
+        return None
+    roles = [item.strip() for item in value.split(",") if item.strip()]
+    if any(role not in ROLES for role in roles):
+        raise HTTPException(status_code=400, detail="allowed_roles 包含无效角色")
+    return roles
+
+
 @router.get("/documents")
-def documents() -> list[dict]:
-    return agent.documents()
+def documents(
+    identity: Annotated[Identity, Depends(current_identity)],
+) -> list[dict]:
+    return agent.documents(role=identity.role)
 
 
 @router.delete("/documents/{document_id}")
@@ -59,7 +70,14 @@ def add_document(
     identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
 ) -> dict[str, int]:
     try:
-        return {"document_id": agent.add_document(request.title, request.content)}
+        return {
+            "document_id": agent.add_document(
+                request.title,
+                request.content,
+                tags=request.tags,
+                allowed_roles=list(request.allowed_roles),
+            )
+        }
     except LLMNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -68,6 +86,8 @@ def add_document(
 async def upload_document(
     identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
     file: UploadFile = File(...),
+    tags: str = Form(""),
+    allowed_roles: str = Form(""),
 ) -> dict[str, int | str]:
     data = await file.read(settings.knowledge_max_upload_bytes + 1)
     if len(data) > settings.knowledge_max_upload_bytes:
@@ -75,7 +95,12 @@ async def upload_document(
 
     try:
         content = extract_text(file.filename or "document.txt", data)
-        document_id = agent.add_document(file.filename or "未命名文档", content)
+        document_id = agent.add_document(
+            file.filename or "未命名文档",
+            content,
+            tags=[item.strip() for item in tags.split(",") if item.strip()],
+            allowed_roles=_form_roles(allowed_roles),
+        )
         return {"document_id": document_id, "filename": file.filename or "未命名文档"}
     except LLMNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -83,11 +108,35 @@ async def upload_document(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@router.put("/documents/{document_id}")
+def update_document(
+    document_id: int,
+    request: DocumentRequest,
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> dict[str, int]:
+    try:
+        version = agent.update_document(
+            document_id,
+            request.title,
+            request.content,
+            tags=request.tags,
+            allowed_roles=list(request.allowed_roles),
+        )
+        if version is None:
+            raise HTTPException(status_code=404, detail="文档不存在")
+        return {"document_id": document_id, "version": version}
+    except LLMNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
 @router.post("/ask", response_model=KnowledgeAnswer)
-def ask(request: AskRequest) -> KnowledgeAnswer:
+def ask(
+    request: AskRequest,
+    identity: Annotated[Identity, Depends(current_identity)],
+) -> KnowledgeAnswer:
     run = start_run("knowledge")
     try:
-        answer = agent.ask(request.question)
+        answer = agent.ask(request.question, role=identity.role)
         run.success(answer.trace)
         return answer
     except LLMNotConfiguredError as exc:

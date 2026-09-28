@@ -58,3 +58,43 @@ def test_document_delete_requires_approved_tool(tmp_path):
 
     assert agent.delete_document(document_id, approved=True) is True
     assert agent.documents() == []
+
+
+def test_document_update_increments_version_and_metadata(tmp_path):
+    store = KnowledgeStore(str(tmp_path / "knowledge.db"))
+    document_id = store.add_document(
+        "雷达资料",
+        "雷达数据验收要求包含完整性检查。",
+        _embed,
+        tags=["雷达"],
+        allowed_roles=["operator", "admin"],
+    )
+
+    version = store.update_document(
+        document_id,
+        "雷达资料 v2",
+        "雷达数据验收还需要检查时间范围。",
+        _embed,
+        tags=["雷达", "验收"],
+        allowed_roles=["operator"],
+    )
+
+    assert version == 2
+    document = store.list_documents(role="operator")[0]
+    assert document["version"] == 2
+    assert document["tags"] == ["雷达", "验收"]
+    assert document["allowed_roles"] == ["operator"]
+    assert store.list_documents(role="user") == []
+
+
+def test_role_filtered_retrieval(tmp_path):
+    store = KnowledgeStore(str(tmp_path / "knowledge.db"))
+    store.add_document(
+        "管理员资料",
+        "雷达内部资料。",
+        _embed,
+        allowed_roles=["admin"],
+    )
+
+    assert store.search("雷达", _embed, role="user") == []
+    assert store.search("雷达", _embed, role="admin")[0]["title"] == "管理员资料"
