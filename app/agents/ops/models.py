@@ -23,6 +23,11 @@ class PrometheusResult(BaseModel):
     result: list[dict[str, Any]]
 
 
+class RuntimeInventory(BaseModel):
+    tool: str
+    items: list[dict[str, Any]]
+
+
 class OpsSnapshot(BaseModel):
     hostname: str
     cpu_count: int | None
@@ -37,4 +42,6 @@ class OpsAnswer(BaseModel):
     snapshot: OpsSnapshot
     logs: list[LogTail] = Field(default_factory=list)
     prometheus: PrometheusResult | None = None
+    docker: RuntimeInventory | None = None
+    kubernetes: RuntimeInventory | None = None
     trace: list[TraceStep] = Field(default_factory=list)

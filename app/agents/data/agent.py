@@ -128,7 +128,7 @@ class DataAgent:
         }
 
     def ask(self, question: str) -> AgentAnswer:
-        schema_info = describe_schema(self.db.engine, self.db.settings.database_schema)
+        schema_info = describe_schema(self.db.engine, self.db.schema)
         schema = schema_to_prompt(schema_info)
         trace = [TraceStep(kind="tool", name="schema", detail=f"{len(schema_info['tables'])} tables")]
         attempts: list[SqlAttempt] = []

@@ -9,6 +9,7 @@
 
 已实现：
 - PostgreSQL / Kingbase / SQLite
+- 多数据源配置与按请求切换数据源
 - Schema 自动感知
 - SELECT/CTE 只读 SQL 安全网关
 - 最大结果集限制
@@ -42,7 +43,7 @@
 - 只读系统快照
 - 基于快照的故障分析
 
-已支持通过配置的只读日志文件和 Prometheus API 参与诊断；日志路径只能由服务端配置，不能由请求指定。当前仍没有重启、Shell 写操作或自动修复能力。Docker/Kubernetes 写操作后续再增加 Tool 权限和人工审批。
+已支持通过配置的只读日志文件和 Prometheus API 参与诊断；日志路径只能由服务端配置，不能由请求指定。还可显式启用固定只读命令的 Docker 容器列表与 Kubernetes Pod 列表。当前仍没有重启、Shell 写操作或自动修复能力。
 
 ## 架构
 
@@ -84,6 +85,14 @@ uvicorn app.main:app --reload
 - `http://127.0.0.1:8000/`：当前 Data Agent 演示界面
 - `http://127.0.0.1:8000/docs`：完整 API
 
+可选多数据源配置：
+
+```env
+DATA_SOURCES={"analytics":{"url":"postgresql+psycopg://readonly:password@db-host/analytics","schema":"public"}}
+```
+
+额外数据源只在服务端配置，API 只暴露数据源名称和 schema，不返回连接串。
+
 自然语言能力需要配置：
 
 ```env
@@ -98,9 +107,10 @@ EMBEDDING_MODEL=
 ## API
 
 ### Data
-- `GET /api/v1/data/schema`
-- `POST /api/v1/data/sql`
-- `POST /api/v1/data/ask`
+- `GET /api/v1/data/sources`
+- `GET /api/v1/data/schema?source=default`
+- `POST /api/v1/data/sql`：请求体可指定 `source`
+- `POST /api/v1/data/ask`：请求体可指定 `source`
 
 ### Knowledge
 - `POST /api/v1/knowledge/documents`
@@ -111,10 +121,12 @@ EMBEDDING_MODEL=
 - `GET /api/v1/ops/snapshot`
 - `GET /api/v1/ops/logs?lines=80`
 - `POST /api/v1/ops/prometheus/query`
+- `GET /api/v1/ops/docker`
+- `GET /api/v1/ops/kubernetes`
 - `POST /api/v1/ops/diagnose`
 
 ## 安全边界
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-Ops Agent 当前只暴露只读系统信息、服务端白名单日志和只读 Prometheus 查询，不提供危险执行工具。需要写操作时再引入明确的 Tool 风险等级和 Human-in-the-loop。
+Ops Agent 当前只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。需要写操作时再引入明确的 Tool 风险等级和 Human-in-the-loop。

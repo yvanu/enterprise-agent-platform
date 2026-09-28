@@ -10,19 +10,27 @@ from app.core.config import Settings
 
 
 class Database:
-    def __init__(self, settings: Settings):
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        url: str | None = None,
+        schema: str | None = None,
+    ):
         self.settings = settings
+        self.url = url or settings.database_url
+        self.schema = schema if schema is not None else settings.database_schema
 
-        if settings.database_url.startswith("sqlite:///"):
-            raw_path = settings.database_url.removeprefix("sqlite:///")
+        if self.url.startswith("sqlite:///"):
+            raw_path = self.url.removeprefix("sqlite:///")
             if raw_path and raw_path != ":memory:":
                 Path(raw_path).parent.mkdir(parents=True, exist_ok=True)
 
         kwargs: dict[str, Any] = {"pool_pre_ping": True}
-        if settings.database_url.startswith("sqlite:"):
+        if self.url.startswith("sqlite:"):
             kwargs["connect_args"] = {"check_same_thread": False}
 
-        self.engine: Engine = create_engine(settings.database_url, **kwargs)
+        self.engine: Engine = create_engine(self.url, **kwargs)
 
     @property
     def dialect(self) -> str:

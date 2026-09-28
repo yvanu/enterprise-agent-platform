@@ -30,6 +30,33 @@ def test_logs_only_read_configured_files(tmp_path):
     assert result[0].lines == ["two", "three"]
 
 
+def test_docker_inventory(monkeypatch):
+    class _Result:
+        stdout = '{"Names":"api","Status":"Up 2 hours"}\n'
+
+    monkeypatch.setattr(ops_module.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(ops_module.subprocess, "run", lambda *args, **kwargs: _Result())
+
+    result = OpsAgent(_NoopLLM(), enable_docker=True).docker_containers()
+
+    assert result.tool == "docker"
+    assert result.items[0]["Names"] == "api"
+
+
+def test_kubernetes_inventory(monkeypatch):
+    class _Result:
+        stdout = '{"items":[{"metadata":{"namespace":"prod","name":"api-1"},"status":{"phase":"Running","podIP":"10.0.0.2"}}]}'
+
+    monkeypatch.setattr(ops_module.shutil, "which", lambda name: f"/usr/bin/{name}")
+    monkeypatch.setattr(ops_module.subprocess, "run", lambda *args, **kwargs: _Result())
+
+    result = OpsAgent(_NoopLLM(), enable_kubernetes=True).kubernetes_pods()
+
+    assert result.tool == "kubernetes"
+    assert result.items[0]["namespace"] == "prod"
+    assert result.items[0]["phase"] == "Running"
+
+
 def test_prometheus_query(monkeypatch):
     class _Response:
         def raise_for_status(self):

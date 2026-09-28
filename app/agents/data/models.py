@@ -39,9 +39,16 @@ class AgentAnswer(BaseModel):
     trace: list[TraceStep] = Field(default_factory=list)
 
 
+class DataSourceInfo(BaseModel):
+    name: str
+    schema_name: str | None = None
+
+
 class SqlRequest(BaseModel):
     sql: str
+    source: str = "default"
 
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=2, max_length=2000)
+    source: str = "default"

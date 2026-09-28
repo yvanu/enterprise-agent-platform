@@ -8,6 +8,7 @@ from app.agents.ops.models import (
     OpsSnapshot,
     PrometheusRequest,
     PrometheusResult,
+    RuntimeInventory,
 )
 from app.core.config import get_settings
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
@@ -20,6 +21,9 @@ agent = OpsAgent(
     log_files=settings.ops_log_files,
     prometheus_url=settings.prometheus_url,
     http_timeout_seconds=settings.ops_http_timeout_seconds,
+    enable_docker=settings.ops_enable_docker,
+    enable_kubernetes=settings.ops_enable_kubernetes,
+    command_timeout_seconds=settings.ops_command_timeout_seconds,
 )
 
 
@@ -37,6 +41,22 @@ def logs(lines: int = Query(80, ge=1, le=500)) -> list[LogTail]:
 def prometheus(request: PrometheusRequest) -> PrometheusResult:
     try:
         return agent.prometheus(request.query)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/docker", response_model=RuntimeInventory)
+def docker() -> RuntimeInventory:
+    try:
+        return agent.docker_containers()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/kubernetes", response_model=RuntimeInventory)
+def kubernetes() -> RuntimeInventory:
+    try:
+        return agent.kubernetes_pods()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

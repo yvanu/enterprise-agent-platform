@@ -1,6 +1,14 @@
 from functools import lru_cache
 
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class DataSourceConfig(BaseModel):
+    url: str
+    schema_name: str | None = Field(default=None, alias="schema")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class Settings(BaseSettings):
@@ -9,6 +17,7 @@ class Settings(BaseSettings):
 
     database_url: str = "sqlite:///./data/demo.db"
     database_schema: str | None = None
+    data_sources: dict[str, DataSourceConfig] = Field(default_factory=dict)
     sql_max_rows: int = 200
     sql_timeout_seconds: int = 8
 
@@ -26,6 +35,9 @@ class Settings(BaseSettings):
     ops_log_files: str = ""
     prometheus_url: str = ""
     ops_http_timeout_seconds: int = 5
+    ops_enable_docker: bool = False
+    ops_enable_kubernetes: bool = False
+    ops_command_timeout_seconds: int = 5
 
     model_config = SettingsConfigDict(
         env_file=".env",

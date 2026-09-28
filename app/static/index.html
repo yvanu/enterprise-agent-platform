@@ -12,7 +12,7 @@
     .tabs{display:flex;gap:8px;margin:24px 0}.tab{background:#fff;color:#475467;border:1px solid #d0d5dd}.tab.active{background:#1570ef;color:#fff;border-color:#1570ef}
     button{border:0;border-radius:9px;padding:10px 15px;font-weight:650;cursor:pointer;background:#1570ef;color:#fff}button.secondary{background:#fff;color:#344054;border:1px solid #d0d5dd}
     .panel{display:none}.panel.active{display:block}.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.card{background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:18px;box-shadow:0 1px 2px #1018280d;margin-bottom:18px}
-    textarea,input{width:100%;border:1px solid #d0d5dd;border-radius:9px;padding:11px;font:inherit;background:#fff}textarea{min-height:105px;resize:vertical}.actions{display:flex;gap:10px;margin-top:12px;align-items:center}
+    textarea,input,select{width:100%;border:1px solid #d0d5dd;border-radius:9px;padding:11px;font:inherit;background:#fff}textarea{min-height:105px;resize:vertical}.actions{display:flex;gap:10px;margin-top:12px;align-items:center}
     pre{background:#101828;color:#e4e7ec;border-radius:10px;padding:14px;overflow:auto;white-space:pre-wrap;min-height:90px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:9px;border-bottom:1px solid #eaecf0}th{color:#475467}
     .muted{font-size:13px;color:#98a2b3}.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:5px 9px;border-radius:999px;background:#f2f4f7;color:#475467;font-size:12px}
     .trace{display:grid;gap:8px}.trace-item{display:grid;grid-template-columns:82px 150px 1fr;gap:8px;padding:9px 0;border-bottom:1px solid #f2f4f7;font-size:13px}.trace-item:last-child{border:0}.ok{color:#027a48}.error{color:#b42318}
@@ -43,6 +43,9 @@
       <div>
         <div class="card">
           <h3>自然语言数据分析</h3>
+          <label class="muted" for="dataSource">数据源</label>
+          <select id="dataSource"><option value="default">default</option></select>
+          <div style="height:10px"></div>
           <textarea id="dataQuestion">统计每类数据的数量，并指出数量最多的类别。</textarea>
           <div class="actions"><button id="dataAsk">开始分析</button></div>
           <p class="muted">自然语言分析需要配置 LLM_MODEL。</p>
@@ -125,6 +128,11 @@ ORDER BY total DESC</textarea>
           <div class="actions"><button class="secondary" id="runProm">执行只读查询</button></div>
           <pre id="promResult">未查询</pre>
         </div>
+        <div class="card">
+          <h3>容器 / Kubernetes</h3>
+          <div class="actions"><button class="secondary" id="loadDocker">Docker PS</button><button class="secondary" id="loadK8s">Kubernetes Pods</button></div>
+          <pre id="runtimeResult">默认关闭；在 .env 中显式启用后可读取。</pre>
+        </div>
       </div>
     </div>
   </section>
@@ -155,9 +163,15 @@ function renderTable(data){
   const rows=data.rows.map(r=>`<tr>${data.columns.map(c=>`<td>${esc(r[c])}</td>`).join("")}</tr>`).join("");
   $("table").innerHTML=`<table><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table><p class="muted">${data.row_count} 行${data.truncated?"（已截断）":""}</p>`;
 }
+async function loadSources(){
+  try{
+    const sources=await api("/api/v1/data/sources");
+    $("dataSource").innerHTML=sources.map(x=>`<option value="${esc(x.name)}">${esc(x.name)}${x.schema_name?" · "+esc(x.schema_name):""}</option>`).join("");
+  }catch(e){}
+}
 async function loadSchema(){
   try{
-    const s=await api("/api/v1/data/schema");
+    const s=await api("/api/v1/data/schema?source="+encodeURIComponent($("dataSource").value));
     $("schema").innerHTML=s.tables.map(t=>`<p><b>${esc(t.name)}</b><br><span class="muted">${t.columns.map(c=>esc(c.name)+" : "+esc(c.type)).join("<br>")}</span></p>`).join("");
   }catch(e){$("schema").textContent=e.message}
 }
@@ -188,15 +202,16 @@ document.querySelectorAll(".tab").forEach(button=>button.onclick=()=>{
   button.classList.add("active");$("panel-"+button.dataset.tab).classList.add("active");
 });
 
+$("dataSource").onchange=loadSchema;
 $("runSql").onclick=async()=>{
   $("table").textContent="执行中...";
-  try{renderTable(await post("/api/v1/data/sql",{sql:$("sql").value}))}catch(e){$("table").textContent=e.message}
+  try{renderTable(await post("/api/v1/data/sql",{sql:$("sql").value,source:$("dataSource").value}))}catch(e){$("table").textContent=e.message}
 };
 let lastReport="";
 $("dataAsk").onclick=async()=>{
   $("dataAnswer").textContent="Agent 分析中...";
   try{
-    const d=await post("/api/v1/data/ask",{question:$("dataQuestion").value});
+    const d=await post("/api/v1/data/ask",{question:$("dataQuestion").value,source:$("dataSource").value});
     $("dataAnswer").textContent=d.answer+"\n\n"+d.insights.map(x=>"• "+x).join("\n")+"\n\nSQL:\n"+d.sql;
     lastReport=d.report_markdown||"";
     $("downloadReport").disabled=!lastReport;
@@ -247,6 +262,16 @@ $("runProm").onclick=async()=>{
     $("promResult").textContent=JSON.stringify(d.result,null,2);
   }catch(e){$("promResult").textContent=e.message}
 };
+$("loadDocker").onclick=async()=>{
+  $("runtimeResult").textContent="读取 Docker...";
+  try{$("runtimeResult").textContent=JSON.stringify((await api("/api/v1/ops/docker")).items,null,2)}
+  catch(e){$("runtimeResult").textContent=e.message}
+};
+$("loadK8s").onclick=async()=>{
+  $("runtimeResult").textContent="读取 Kubernetes...";
+  try{$("runtimeResult").textContent=JSON.stringify((await api("/api/v1/ops/kubernetes")).items,null,2)}
+  catch(e){$("runtimeResult").textContent=e.message}
+};
 $("opsAsk").onclick=async()=>{
   $("opsAnswer").textContent="诊断中...";
   try{
@@ -254,12 +279,14 @@ $("opsAsk").onclick=async()=>{
     $("opsAnswer").textContent=d.answer;renderTrace("opsTrace",d.trace);loadOps();
     if(d.logs?.length)$("opsLogs").textContent=d.logs.map(x=>"== "+x.path+" ==\n"+x.lines.join("\n")).join("\n\n");
     if(d.prometheus)$("promResult").textContent=JSON.stringify(d.prometheus.result,null,2);
+    if(d.docker)$("runtimeResult").textContent="Docker\n"+JSON.stringify(d.docker.items,null,2);
+    if(d.kubernetes)$("runtimeResult").textContent+=($("runtimeResult").textContent?"\n\n":"")+"Kubernetes\n"+JSON.stringify(d.kubernetes.items,null,2);
   }catch(e){$("opsAnswer").textContent=e.message}
 };
 
 (async()=>{
   try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
-  loadSchema();loadOps();
+  await loadSources();loadSchema();loadOps();
 })();
 </script>
 </body>

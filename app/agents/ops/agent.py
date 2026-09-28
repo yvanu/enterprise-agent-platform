@@ -2,11 +2,12 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 from pathlib import Path
 
 import httpx
 
-from app.agents.ops.models import LogTail, OpsAnswer, OpsSnapshot, PrometheusResult
+from app.agents.ops.models import LogTail, OpsAnswer, OpsSnapshot, PrometheusResult, RuntimeInventory
 from app.platform.llm import OpenAICompatibleLLM
 from app.platform.models import TraceStep
 
@@ -32,11 +33,17 @@ class OpsAgent:
         log_files: str = "",
         prometheus_url: str = "",
         http_timeout_seconds: int = 5,
+        enable_docker: bool = False,
+        enable_kubernetes: bool = False,
+        command_timeout_seconds: int = 5,
     ):
         self.llm = llm
         self.log_files = [Path(p.strip()).resolve() for p in log_files.split(",") if p.strip()]
         self.prometheus_url = prometheus_url.rstrip("/")
         self.http_timeout_seconds = http_timeout_seconds
+        self.enable_docker = enable_docker
+        self.enable_kubernetes = enable_kubernetes
+        self.command_timeout_seconds = command_timeout_seconds
 
     def snapshot(self) -> OpsSnapshot:
         disk = shutil.disk_usage("/")
@@ -80,6 +87,50 @@ class OpsAgent:
         result = data.get("data", {}).get("result", [])
         return PrometheusResult(query=query, result=result)
 
+    def docker_containers(self) -> RuntimeInventory:
+        if not self.enable_docker:
+            raise ValueError("Docker 只读工具未启用")
+        if not shutil.which("docker"):
+            raise RuntimeError("docker 命令不可用")
+
+        result = subprocess.run(
+            ["docker", "ps", "--format", "{{json .}}"],
+            capture_output=True,
+            text=True,
+            timeout=self.command_timeout_seconds,
+            check=True,
+        )
+        items = [json.loads(line) for line in result.stdout.splitlines() if line.strip()]
+        return RuntimeInventory(tool="docker", items=items[:100])
+
+    def kubernetes_pods(self) -> RuntimeInventory:
+        if not self.enable_kubernetes:
+            raise ValueError("Kubernetes 只读工具未启用")
+        if not shutil.which("kubectl"):
+            raise RuntimeError("kubectl 命令不可用")
+
+        result = subprocess.run(
+            ["kubectl", "get", "pods", "--all-namespaces", "-o", "json"],
+            capture_output=True,
+            text=True,
+            timeout=self.command_timeout_seconds,
+            check=True,
+        )
+        payload = json.loads(result.stdout or "{}")
+        items = []
+        for pod in payload.get("items", [])[:100]:
+            metadata = pod.get("metadata", {})
+            status = pod.get("status", {})
+            items.append(
+                {
+                    "namespace": metadata.get("namespace"),
+                    "name": metadata.get("name"),
+                    "phase": status.get("phase"),
+                    "pod_ip": status.get("podIP"),
+                }
+            )
+        return RuntimeInventory(tool="kubernetes", items=items)
+
     def diagnose(self, question: str) -> OpsAnswer:
         snapshot = self.snapshot()
         trace = [TraceStep(kind="tool", name="system_snapshot")]
@@ -111,10 +162,28 @@ class OpsAgent:
                     )
                 )
 
+        docker = None
+        if self.enable_docker:
+            try:
+                docker = self.docker_containers()
+                trace.append(TraceStep(kind="tool", name="docker_ps", detail=f"{len(docker.items)} containers"))
+            except Exception as exc:
+                trace.append(TraceStep(kind="tool", name="docker_ps", status="error", detail=str(exc)))
+
+        kubernetes = None
+        if self.enable_kubernetes:
+            try:
+                kubernetes = self.kubernetes_pods()
+                trace.append(TraceStep(kind="tool", name="kubectl_pods", detail=f"{len(kubernetes.items)} pods"))
+            except Exception as exc:
+                trace.append(TraceStep(kind="tool", name="kubectl_pods", status="error", detail=str(exc)))
+
         context = {
             "snapshot": snapshot.model_dump(),
             "logs": [item.model_dump() for item in logs],
             "prometheus": prometheus.model_dump() if prometheus else None,
+            "docker": docker.model_dump() if docker else None,
+            "kubernetes": kubernetes.model_dump() if kubernetes else None,
         }
         answer = self.llm.chat(
             [
@@ -142,5 +211,7 @@ class OpsAgent:
             snapshot=snapshot,
             logs=logs,
             prometheus=prometheus,
+            docker=docker,
+            kubernetes=kubernetes,
             trace=trace,
         )
