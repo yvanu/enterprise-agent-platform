@@ -16,14 +16,17 @@ def test_approval_lifecycle(tmp_path):
             tool="document_delete",
             target="document:7",
             reason="删除过期文档",
-        )
+        ),
+        requester="operator",
     )
 
     assert record.status == "pending"
+    assert record.requested_by == "operator"
 
     approved = store.decide(
         record.id,
-        ApprovalDecision(decision="approved", actor="reviewer"),
+        ApprovalDecision(decision="approved"),
+        actor="reviewer",
     )
     assert approved.status == "approved"
     assert approved.actor == "reviewer"
@@ -33,8 +36,11 @@ def test_approval_lifecycle(tmp_path):
         agent="knowledge",
         tool="document_delete",
         target="document:7",
+        actor="operator",
     )
-    assert store.get(record.id).status == "consumed"
+    consumed = store.get(record.id)
+    assert consumed.status == "consumed"
+    assert consumed.consumed_by == "operator"
 
     with pytest.raises(PermissionError):
         store.consume(
@@ -42,6 +48,7 @@ def test_approval_lifecycle(tmp_path):
             agent="knowledge",
             tool="document_delete",
             target="document:7",
+            actor="operator",
         )
 
 
@@ -54,5 +61,6 @@ def test_approval_rejects_non_approval_tool(tmp_path):
                 agent="data",
                 tool="readonly_sql",
                 target="default",
-            )
+            ),
+            requester="operator",
         )

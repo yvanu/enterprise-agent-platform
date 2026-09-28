@@ -17,7 +17,6 @@ class ApprovalCreate(BaseModel):
 
 class ApprovalDecision(BaseModel):
     decision: Literal["approved", "rejected"]
-    actor: str = Field(min_length=1, max_length=100)
 
 
 class ApprovalRecord(BaseModel):
@@ -27,7 +26,9 @@ class ApprovalRecord(BaseModel):
     target: str
     reason: str
     status: str
+    requested_by: str | None = None
     actor: str | None = None
+    consumed_by: str | None = None
     created_at: str
     decided_at: str | None = None
 
@@ -46,12 +47,22 @@ class ApprovalStore:
                     target TEXT NOT NULL,
                     reason TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending',
+                    requested_by TEXT,
                     actor TEXT,
+                    consumed_by TEXT,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     decided_at TEXT
                 )
                 """
             )
+            columns = {
+                row[1]
+                for row in conn.execute("PRAGMA table_info(approvals)").fetchall()
+            }
+            if "requested_by" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN requested_by TEXT")
+            if "consumed_by" not in columns:
+                conn.execute("ALTER TABLE approvals ADD COLUMN consumed_by TEXT")
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path)
@@ -65,12 +76,14 @@ class ApprovalStore:
             target=row[3],
             reason=row[4],
             status=row[5],
-            actor=row[6],
-            created_at=row[7],
-            decided_at=row[8],
+            requested_by=row[6],
+            actor=row[7],
+            consumed_by=row[8],
+            created_at=row[9],
+            decided_at=row[10],
         )
 
-    def create(self, request: ApprovalCreate) -> ApprovalRecord:
+    def create(self, request: ApprovalCreate, *, requester: str) -> ApprovalRecord:
         policy = next(
             (
                 item
@@ -89,10 +102,17 @@ class ApprovalStore:
         with self._connect() as conn:
             cursor = conn.execute(
                 """
-                INSERT INTO approvals (agent, tool, target, reason)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO approvals
+                (agent, tool, target, reason, requested_by)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (request.agent, request.tool, request.target, request.reason),
+                (
+                    request.agent,
+                    request.tool,
+                    request.target,
+                    request.reason,
+                    requester,
+                ),
             )
             approval_id = int(cursor.lastrowid)
         record = self.get(approval_id)
@@ -104,8 +124,8 @@ class ApprovalStore:
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT id, agent, tool, target, reason, status, actor,
-                       created_at, decided_at
+                SELECT id, agent, tool, target, reason, status,
+                       requested_by, actor, consumed_by, created_at, decided_at
                 FROM approvals
                 WHERE id = ?
                 """,
@@ -118,8 +138,8 @@ class ApprovalStore:
         with self._connect() as conn:
             rows = conn.execute(
                 """
-                SELECT id, agent, tool, target, reason, status, actor,
-                       created_at, decided_at
+                SELECT id, agent, tool, target, reason, status,
+                       requested_by, actor, consumed_by, created_at, decided_at
                 FROM approvals
                 ORDER BY id DESC
                 LIMIT ?
@@ -128,7 +148,13 @@ class ApprovalStore:
             ).fetchall()
         return [self._record(row) for row in rows]
 
-    def decide(self, approval_id: int, decision: ApprovalDecision) -> ApprovalRecord:
+    def decide(
+        self,
+        approval_id: int,
+        decision: ApprovalDecision,
+        *,
+        actor: str,
+    ) -> ApprovalRecord:
         with self._connect() as conn:
             cursor = conn.execute(
                 """
@@ -136,7 +162,7 @@ class ApprovalStore:
                 SET status = ?, actor = ?, decided_at = CURRENT_TIMESTAMP
                 WHERE id = ? AND status = 'pending'
                 """,
-                (decision.decision, decision.actor, approval_id),
+                (decision.decision, actor, approval_id),
             )
             if cursor.rowcount == 0:
                 current = self.get(approval_id)
@@ -148,19 +174,27 @@ class ApprovalStore:
             raise RuntimeError("审批记录读取失败")
         return record
 
-    def consume(self, approval_id: int, *, agent: str, tool: str, target: str) -> None:
+    def consume(
+        self,
+        approval_id: int,
+        *,
+        agent: str,
+        tool: str,
+        target: str,
+        actor: str,
+    ) -> None:
         with self._connect() as conn:
             cursor = conn.execute(
                 """
                 UPDATE approvals
-                SET status = 'consumed'
+                SET status = 'consumed', consumed_by = ?
                 WHERE id = ?
                   AND status = 'approved'
                   AND agent = ?
                   AND tool = ?
                   AND target = ?
                 """,
-                (approval_id, agent, tool, target),
+                (actor, approval_id, agent, tool, target),
             )
             if cursor.rowcount == 0:
                 record = self.get(approval_id)

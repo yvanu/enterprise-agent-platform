@@ -8,7 +8,7 @@
     :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#182230;background:#f6f8fb}
     *{box-sizing:border-box}body{margin:0}.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
     h1{margin:6px 0;font-size:30px}h2,h3,h4{margin-top:0}p{color:#667085}.top{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
-    .status{display:inline-block;padding:4px 9px;border-radius:999px;background:#ecfdf3;color:#027a48;font-size:12px;font-weight:700}
+    .status{display:inline-block;padding:4px 9px;border-radius:999px;background:#ecfdf3;color:#027a48;font-size:12px;font-weight:700}.auth-box{width:300px}.auth-box input{margin-top:8px}
     .tabs{display:flex;gap:8px;margin:24px 0}.tab{background:#fff;color:#475467;border:1px solid #d0d5dd}.tab.active{background:#1570ef;color:#fff;border-color:#1570ef}
     button{border:0;border-radius:9px;padding:10px 15px;font-weight:650;cursor:pointer;background:#1570ef;color:#fff}button.secondary{background:#fff;color:#344054;border:1px solid #d0d5dd}
     .panel{display:none}.panel.active{display:block}.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:18px}.card{background:#fff;border:1px solid #e4e7ec;border-radius:14px;padding:18px;box-shadow:0 1px 2px #1018280d;margin-bottom:18px}
@@ -29,7 +29,7 @@
       <h1>Enterprise Agent Platform</h1>
       <p>Data · Knowledge · Ops，三个业务 Agent 共用一套 LLM Runtime。</p>
     </div>
-    <div class="chips"><span class="chip">FastAPI</span><span class="chip">RAG</span><span class="chip">SQL Guard</span><span class="chip">Trace</span></div>
+    <div class="auth-box"><div class="chips"><span class="chip">FastAPI</span><span class="chip">RAG</span><span class="chip">SQL Guard</span><span class="chip">Trace</span></div><input id="apiToken" type="password" placeholder="Bearer Token"><div id="identityStatus" class="muted" style="margin-top:6px">检查身份...</div></div>
   </header>
 
   <nav class="tabs">
@@ -52,7 +52,6 @@
           <h3 style="margin:0">Human Approval</h3>
           <button class="secondary" id="refreshApprovals">刷新</button>
         </div>
-        <input id="approvalActor" value="reviewer" placeholder="审批人" style="margin-top:12px">
         <div id="approvals" class="muted" style="margin-top:12px">加载中...</div>
       </div>
     </div>
@@ -185,7 +184,9 @@ ORDER BY total DESC</textarea>
 
 <script>
 const $=id=>document.getElementById(id);
-async function api(url,options){
+async function api(url,options={}){
+  const token=$("apiToken")?.value.trim();
+  options.headers={...(token?{Authorization:"Bearer "+token}:{}),...(options.headers||{})};
   const r=await fetch(url,options), data=await r.json();
   if(!r.ok) throw new Error(data.detail||JSON.stringify(data));
   return data;
@@ -193,6 +194,12 @@ async function api(url,options){
 const post=(url,body)=>api(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const bytes=n=>n==null?"-":n>1073741824?(n/1073741824).toFixed(1)+" GB":n>1048576?(n/1048576).toFixed(1)+" MB":Math.round(n/1024)+" KB";
+$("apiToken").value=localStorage.getItem("apiToken")||"";
+$("apiToken").onchange=()=>{localStorage.setItem("apiToken",$("apiToken").value.trim());location.reload()};
+async function loadIdentity(){
+  try{const me=await api("/api/v1/auth/me");$("identityStatus").textContent=me.username+" · "+me.role}
+  catch(e){$("identityStatus").textContent=e.message}
+}
 
 function renderTrace(id,trace=[]){
   $(id).innerHTML=trace.length?`<h4>Agent Trace</h4><div class="trace">${trace.map(x=>`<div class="trace-item"><span class="${x.status==="error"?"error":"ok"}">${esc(x.kind)}</span><b>${esc(x.name)}</b><span>${esc(x.detail)}</span></div>`).join("")}</div>`:"";
@@ -244,7 +251,7 @@ async function loadApprovals(){
     $("approvals").innerHTML=items.length?items.map(x=>{
       const actions=x.status==="pending"?`<button class="secondary" data-approve="${x.id}">批准</button> <button class="secondary" data-reject="${x.id}">拒绝</button>`:
         x.status==="approved"&&x.tool==="document_delete"?`<button class="secondary" data-execute-delete="${x.id}" data-target="${esc(x.target)}">执行删除</button>`:"";
-      return `<p><b>#${x.id} · ${esc(x.tool)}</b> · <span class="${x.status==="rejected"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${esc(x.target)} · ${esc(x.reason)}</span><br>${actions}</p>`;
+      return `<p><b>#${x.id} · ${esc(x.tool)}</b> · <span class="${x.status==="rejected"?"error":"ok"}">${esc(x.status)}</span><br><span class="muted">${esc(x.target)} · ${esc(x.reason)} · requester ${esc(x.requested_by||"-")}${x.actor?" · approver "+esc(x.actor):""}${x.consumed_by?" · executor "+esc(x.consumed_by):""}</span><br>${actions}</p>`;
     }).join(""):"暂无审批";
     $("approvals").querySelectorAll("[data-approve]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.approve,"approved"));
     $("approvals").querySelectorAll("[data-reject]").forEach(button=>button.onclick=()=>decideApproval(button.dataset.reject,"rejected"));
@@ -253,7 +260,7 @@ async function loadApprovals(){
 }
 async function decideApproval(id,decision){
   try{
-    await post("/api/v1/platform/approvals/"+id+"/decision",{decision,actor:$("approvalActor").value||"reviewer"});
+    await post("/api/v1/platform/approvals/"+id+"/decision",{decision});
     loadApprovals();
   }catch(e){alert(e.message)}
 }
@@ -423,7 +430,7 @@ $("opsAsk").onclick=async()=>{
 
 (async()=>{
   try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
-  await loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadApprovals();loadRuns();loadOps();
+  await loadIdentity();loadSources();loadSchema();loadKnowledgeDocs();loadToolPolicies();loadApprovals();loadRuns();loadOps();
 })();
 </script>
 </body>

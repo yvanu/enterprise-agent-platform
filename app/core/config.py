@@ -14,6 +14,8 @@ class DataSourceConfig(BaseModel):
 class Settings(BaseSettings):
     app_name: str = "Enterprise Agent Platform"
     app_env: str = "development"
+    auth_enabled: bool = False
+    auth_tokens: dict[str, str] = Field(default_factory=dict)
 
     database_url: str = "sqlite:///./data/demo.db"
     database_schema: str | None = None

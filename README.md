@@ -1,6 +1,6 @@
 # Enterprise Agent Platform
 
-面向企业场景的多 Agent 平台。三个业务 Agent 共用同一套 LLM Runtime、配置、Tool Policy、运行审计、确定性 Eval、Regression Suite 和 API 服务；Agent/接口执行 Tool 前会经过统一权限校验。
+面向企业场景的多 Agent 平台。三个业务 Agent 共用同一套 LLM Runtime、配置、Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务。
 
 ## 三个 Agent
 
@@ -77,6 +77,17 @@ app/
 
 暂不增加 Supervisor。出现真实跨 Agent 协同需求时再加。
 
+## 身份认证与 RBAC
+
+默认开发模式下 `AUTH_ENABLED=false`，API 以 `development/admin` 身份运行；共享或生产环境应开启认证：
+
+```env
+AUTH_ENABLED=true
+AUTH_TOKENS={"user-token":"alice:user","operator-token":"operator:operator","approver-token":"reviewer:approver","admin-token":"admin:admin"}
+```
+
+角色分工：`user` 可使用普通只读 Agent 能力；`operator` 可写入知识库、发起审批和执行已批准动作；`approver` 可查看并审批请求；`admin` 拥有全部权限。审批人由认证身份确定，客户端不能伪造审批人；非管理员不能审批自己发起的请求。
+
 ## CI / Regression
 
 GitHub Actions 会在 `main` push 和 Pull Request 时使用 Python 3.11 执行完整 `pytest`。其中包含离线 Regression Suite，因此 CI 不依赖外部 LLM Key，也不会访问生产数据库。
@@ -117,15 +128,18 @@ EMBEDDING_MODEL=
 
 ## API
 
+### Auth
+- `GET /api/v1/auth/me`：返回当前认证用户和角色
+
 ### Platform
 - `GET /api/v1/platform/tools`：统一 Tool Policy 清单
 - `GET /api/v1/platform/runs`：Agent 运行记录，可按 Agent 过滤
 - `GET /api/v1/platform/runs/{run_id}`：Run 详情、Trace 与对应 Eval 明细
 - `GET /api/v1/platform/evals`：对 Run Trace 做确定性评估，可按 Agent 过滤
 - `GET /api/v1/platform/metrics`：按 Agent 汇总运行次数、成功率、平均耗时和 Eval 指标
-- `GET /api/v1/platform/approvals`：查看审批记录
-- `POST /api/v1/platform/approvals`：为需要审批的 Tool 创建审批请求
-- `POST /api/v1/platform/approvals/{id}/decision`：批准或拒绝审批请求
+- `GET /api/v1/platform/approvals`：`operator/approver/admin` 查看审批记录
+- `POST /api/v1/platform/approvals`：`operator/admin` 为需要审批的 Tool 创建审批请求
+- `POST /api/v1/platform/approvals/{id}/decision`：`approver/admin` 批准或拒绝审批请求
 - `POST /api/v1/platform/regression/run`：运行隔离的固定业务样本回归测试
 
 ### Data
@@ -153,4 +167,4 @@ EMBEDDING_MODEL=
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、平均 Eval 分和 Eval 通过率。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先创建审批、由审批人批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除。Ops Agent 当前仍只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。未来新增服务重启、配置变更等高风险动作时复用同一审批机制。
+平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、平均 Eval 分和 Eval 通过率。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 只持久化 Agent 类型、状态、耗时、Trace 和异常类型，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先由 `operator/admin` 创建审批、再由 `approver/admin` 通过认证身份批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除；请求人、审批人、执行人都会写入审批审计记录。Ops Agent 当前仍只暴露只读系统信息、服务端白名单日志、只读 Prometheus 查询，以及显式启用后的固定 `docker ps` / `kubectl get pods` 查询；不接受任意 Shell 命令。未来新增服务重启、配置变更等高风险动作时复用同一审批机制。

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.platform.approvals import (
     ApprovalCreate,
@@ -6,6 +8,7 @@ from app.platform.approvals import (
     ApprovalRecord,
     approval_store,
 )
+from app.platform.auth import Identity, require_roles
 from app.platform.evals import AgentQualityMetric, EvalResult, evaluate_run, evaluate_runs, summarize_quality
 from app.platform.policy import ToolPolicy, ToolPolicyError, tool_policies
 from app.platform.regression import RegressionReport, run_regression_suite
@@ -50,14 +53,20 @@ def metrics(limit: int = Query(200, ge=1, le=200)) -> list[AgentQualityMetric]:
 
 
 @router.get("/approvals", response_model=list[ApprovalRecord])
-def approvals(limit: int = Query(50, ge=1, le=200)) -> list[ApprovalRecord]:
+def approvals(
+    identity: Annotated[Identity, Depends(require_roles("operator", "approver", "admin"))],
+    limit: int = Query(50, ge=1, le=200),
+) -> list[ApprovalRecord]:
     return approval_store.list(limit)
 
 
 @router.post("/approvals", response_model=ApprovalRecord)
-def create_approval(request: ApprovalCreate) -> ApprovalRecord:
+def create_approval(
+    request: ApprovalCreate,
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> ApprovalRecord:
     try:
-        return approval_store.create(request)
+        return approval_store.create(request, requester=identity.username)
     except ToolPolicyError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -66,9 +75,19 @@ def create_approval(request: ApprovalCreate) -> ApprovalRecord:
 def decide_approval(
     approval_id: int,
     decision: ApprovalDecision,
+    identity: Annotated[Identity, Depends(require_roles("approver", "admin"))],
 ) -> ApprovalRecord:
+    current = approval_store.get(approval_id)
+    if current is None:
+        raise HTTPException(status_code=404, detail="审批记录不存在")
+    if current.requested_by == identity.username and identity.role != "admin":
+        raise HTTPException(status_code=409, detail="申请人不能审批自己的请求")
     try:
-        return approval_store.decide(approval_id, decision)
+        return approval_store.decide(
+            approval_id,
+            decision,
+            actor=identity.username,
+        )
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
@@ -76,5 +95,7 @@ def decide_approval(
 
 
 @router.post("/regression/run", response_model=RegressionReport)
-def regression() -> RegressionReport:
+def regression(
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> RegressionReport:
     return run_regression_suite()

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.agents.ops.agent import OpsAgent
 from app.agents.ops.models import (
@@ -11,11 +11,16 @@ from app.agents.ops.models import (
     RuntimeInventory,
 )
 from app.core.config import get_settings
+from app.platform.auth import require_roles
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
 from app.platform.runs import start_run
 
 
-router = APIRouter(prefix="/api/v1/ops", tags=["ops"])
+router = APIRouter(
+    prefix="/api/v1/ops",
+    tags=["ops"],
+    dependencies=[Depends(require_roles("operator", "admin"))],
+)
 settings = get_settings()
 agent = OpsAgent(
     OpenAICompatibleLLM(settings),

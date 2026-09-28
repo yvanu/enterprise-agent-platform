@@ -1,4 +1,6 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.agents.knowledge.agent import KnowledgeAgent
 from app.agents.knowledge.models import AskRequest, DocumentRequest, KnowledgeAnswer
@@ -6,6 +8,7 @@ from app.agents.knowledge.parser import extract_text
 from app.agents.knowledge.store import KnowledgeStore
 from app.core.config import get_settings
 from app.platform.approvals import approval_store
+from app.platform.auth import Identity, require_roles
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
 from app.platform.runs import start_run
 
@@ -25,7 +28,11 @@ def documents() -> list[dict]:
 
 
 @router.delete("/documents/{document_id}")
-def delete_document(document_id: int, approval_id: int) -> dict[str, int]:
+def delete_document(
+    document_id: int,
+    approval_id: int,
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> dict[str, int]:
     if not any(item["document_id"] == document_id for item in agent.documents()):
         raise HTTPException(status_code=404, detail="文档不存在")
 
@@ -35,6 +42,7 @@ def delete_document(document_id: int, approval_id: int) -> dict[str, int]:
             agent="knowledge",
             tool="document_delete",
             target=f"document:{document_id}",
+            actor=identity.username,
         )
         if not agent.delete_document(document_id, approved=True):
             raise HTTPException(status_code=404, detail="文档不存在")
@@ -46,7 +54,10 @@ def delete_document(document_id: int, approval_id: int) -> dict[str, int]:
 
 
 @router.post("/documents")
-def add_document(request: DocumentRequest) -> dict[str, int]:
+def add_document(
+    request: DocumentRequest,
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> dict[str, int]:
     try:
         return {"document_id": agent.add_document(request.title, request.content)}
     except LLMNotConfiguredError as exc:
@@ -54,7 +65,10 @@ def add_document(request: DocumentRequest) -> dict[str, int]:
 
 
 @router.post("/documents/upload")
-async def upload_document(file: UploadFile = File(...)) -> dict[str, int | str]:
+async def upload_document(
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+    file: UploadFile = File(...),
+) -> dict[str, int | str]:
     data = await file.read(settings.knowledge_max_upload_bytes + 1)
     if len(data) > settings.knowledge_max_upload_bytes:
         raise HTTPException(status_code=413, detail="文件超过知识库上传大小限制")
