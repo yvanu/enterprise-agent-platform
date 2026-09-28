@@ -17,6 +17,11 @@ agent = KnowledgeAgent(
 )
 
 
+@router.get("/documents")
+def documents() -> list[dict]:
+    return agent.documents()
+
+
 @router.post("/documents")
 def add_document(request: DocumentRequest) -> dict[str, int]:
     try:

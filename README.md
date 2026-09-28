@@ -29,6 +29,7 @@
 - 余弦相似度检索
 - 检索结果作为上下文回答
 - 返回原始来源
+- 知识文档目录查询
 
 当前采用进程内 O(n) 向量扫描，适合项目演示和小规模知识库。数据量真正变大时再替换 pgvector / Vectorize，不提前引入向量数据库。
 
@@ -113,6 +114,7 @@ EMBEDDING_MODEL=
 - `POST /api/v1/data/ask`：请求体可指定 `source`
 
 ### Knowledge
+- `GET /api/v1/knowledge/documents`
 - `POST /api/v1/knowledge/documents`
 - `POST /api/v1/knowledge/documents/upload`
 - `POST /api/v1/knowledge/ask`

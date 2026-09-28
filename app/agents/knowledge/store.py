@@ -97,3 +97,18 @@ class KnowledgeStore:
             for row in rows
         ]
         return sorted(scored, key=lambda item: item["score"], reverse=True)[:top_k]
+
+    def list_documents(self) -> list[dict]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT document_id, title, COUNT(*) AS chunks
+                FROM knowledge_chunks
+                GROUP BY document_id, title
+                ORDER BY document_id DESC
+                """
+            ).fetchall()
+        return [
+            {"document_id": row[0], "title": row[1], "chunks": row[2]}
+            for row in rows
+        ]

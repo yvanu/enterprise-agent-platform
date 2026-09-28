@@ -13,6 +13,9 @@ class KnowledgeAgent:
     def add_document(self, title: str, content: str) -> int:
         return self.store.add_document(title, content, self.llm.embed)
 
+    def documents(self) -> list[dict]:
+        return self.store.list_documents()
+
     def ask(self, question: str) -> KnowledgeAnswer:
         sources = self.store.search(question, self.llm.embed, self.top_k)
         trace = [TraceStep(kind="tool", name="knowledge_search", detail=f"{len(sources)} sources")]

@@ -32,3 +32,15 @@ def test_knowledge_agent_returns_trace(tmp_path):
     answer = agent.ask("怎么验收雷达资料？")
 
     assert [step.name for step in answer.trace] == ["knowledge_search", "answer_with_context"]
+
+
+def test_document_catalog(tmp_path):
+    store = KnowledgeStore(str(tmp_path / "knowledge.db"))
+    first = store.add_document("雷达资料", "雷达数据验收要求包含完整性检查。", _embed)
+    second = store.add_document("海洋资料", "海温与盐度数据需要校验时间范围。", _embed)
+
+    documents = store.list_documents()
+
+    assert [item["document_id"] for item in documents] == [second, first]
+    assert documents[0]["title"] == "海洋资料"
+    assert documents[0]["chunks"] == 1

@@ -91,9 +91,15 @@ ORDER BY total DESC</textarea>
           <div id="knowledgeTrace"></div>
         </div>
       </div>
-      <div class="card">
-        <h3>检索来源</h3>
-        <div id="sources" class="muted">暂无</div>
+      <div>
+        <div class="card">
+          <h3>知识文档</h3>
+          <div id="knowledgeDocs" class="muted">加载中...</div>
+        </div>
+        <div class="card">
+          <h3>检索来源</h3>
+          <div id="sources" class="muted">暂无</div>
+        </div>
       </div>
     </div>
   </section>
@@ -175,6 +181,12 @@ async function loadSchema(){
     $("schema").innerHTML=s.tables.map(t=>`<p><b>${esc(t.name)}</b><br><span class="muted">${t.columns.map(c=>esc(c.name)+" : "+esc(c.type)).join("<br>")}</span></p>`).join("");
   }catch(e){$("schema").textContent=e.message}
 }
+async function loadKnowledgeDocs(){
+  try{
+    const docs=await api("/api/v1/knowledge/documents");
+    $("knowledgeDocs").innerHTML=docs.length?docs.map(x=>`<p><b>${esc(x.title)}</b><br><span class="muted">#${x.document_id} · ${x.chunks} chunks</span></p>`).join(""):"暂无文档";
+  }catch(e){$("knowledgeDocs").textContent=e.message}
+}
 async function loadOps(){
   try{
     const d=await api("/api/v1/ops/snapshot"), m=d.memory||{}, disk=d.disk||{};
@@ -242,6 +254,7 @@ $("addDoc").onclick=async()=>{
       d=await post("/api/v1/knowledge/documents",{title:$("docTitle").value,content:$("docContent").value});
     }
     $("docStatus").textContent="已写入，document_id="+d.document_id;
+    loadKnowledgeDocs();
   }catch(e){$("docStatus").textContent=e.message}
 };
 $("knowledgeAsk").onclick=async()=>{
@@ -286,7 +299,7 @@ $("opsAsk").onclick=async()=>{
 
 (async()=>{
   try{$("health").textContent=(await api("/health")).status}catch{$("health").textContent="offline"}
-  await loadSources();loadSchema();loadOps();
+  await loadSources();loadSchema();loadKnowledgeDocs();loadOps();
 })();
 </script>
 </body>
