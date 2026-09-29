@@ -37,6 +37,38 @@ flowchart TB
   EVAL --> METRICS[Quality Metrics / Prometheus]
 ```
 
+## Dynamic Agent Platform
+
+Starting with v0.2, Agent is a persisted platform resource rather than only a predefined Python object.
+
+```text
+Agent Definition
+      │
+      ├── name / slug / type / status
+      ├── built_in
+      └── published_version
+               │
+               ▼
+        Agent Version
+        ├── instructions
+        ├── model
+        ├── temperature
+        ├── max_steps
+        ├── timeout
+        ├── tool_config
+        ├── knowledge_config
+        ├── data_config
+        └── guardrail_config
+```
+
+Published versions are immutable. Editing configuration creates a new Draft Version; publishing can also point back to an older version for rollback.
+
+Every Run records `agent_id + agent_version` so execution remains attributable to the exact configuration used.
+
+Data, Knowledge, Ops and Supervisor are seeded as Built-in Agent Definitions. Generic Custom Agents execute through the shared Runtime Adapter. Tool assignments become first-class resources in the next Tool Platform milestone.
+
+Agent Definition / Version use SQLAlchemy and Alembic. Docker Compose stores them in PostgreSQL; a lightweight SQLite fallback remains available for the standalone demo.
+
 ## Cross-agent incident investigation
 
 ```mermaid
@@ -119,7 +151,8 @@ Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The 
 | --- | --- | --- |
 | Demo business data | SQLite / external SQLAlchemy database | PostgreSQL / Kingbase |
 | Knowledge chunks + embeddings | SQLite | pgvector / managed vector DB |
-| Runs / approvals | SQLite | PostgreSQL |
+| Agent Definition / Version | PostgreSQL (Compose) / SQLite (lightweight demo) | PostgreSQL |
+| Runs / approvals | SQLite compatibility store | PostgreSQL with Async Runtime |
 | Auth identities | config token map + in-memory Web Session | OIDC / enterprise IdP + shared session store |
 
 The current SQLite choices are deliberate for a self-contained demo. The platform interfaces keep the migration path visible without introducing infrastructure before it is needed.

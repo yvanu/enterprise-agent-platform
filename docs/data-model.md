@@ -1,6 +1,6 @@
 # Data Model Baseline
 
-> v0.1 data model baseline. The current platform intentionally uses a small number of SQLite-backed stores. v0.2 begins the migration toward PostgreSQL-backed first-class platform resources.
+> v0.2 data model baseline. Dynamic Agent resources are now first-class SQLAlchemy entities with Alembic migrations. Compose uses PostgreSQL for Agent Definition / Version while legacy Runs / Approvals remain on the v0.1 store until the Async Runtime milestone.
 
 ## 1. Current persistence overview
 
@@ -9,8 +9,9 @@
 | Demo business data | SQLite or external SQLAlchemy datasource |
 | Data Agent datasource | SQLAlchemy URL |
 | Knowledge chunks / embeddings | SQLite |
-| Runs | SQLite |
-| Approvals | SQLite |
+| Agent Definition / Version | PostgreSQL in Compose; SQLite fallback for lightweight demo |
+| Runs | SQLite legacy store |
+| Approvals | SQLite legacy store |
 | Web sessions | process memory |
 | Platform configuration | environment / persisted configuration |
 
@@ -27,16 +28,16 @@ trace_json
 error_type
 request_id
 correlation_id
+agent_id
+agent_version
 created_at
 ```
 
 Run is an execution record, not an audit record.
 
-Future fields include:
+`agent_id` and `agent_version` are implemented in v0.2. Future fields include:
 
 ```text
-agent_id
-agent_version
 workspace_id
 total_tokens
 estimated_cost
@@ -146,21 +147,60 @@ approval_required
 
 v0.2 will introduce first-class Tool resources and Agent ↔ Tool assignment.
 
-## 8. v0.2 target data model
+## 8. v0.2 implemented Agent model
 
-The next milestone introduces:
+Implemented tables:
 
 ```text
 agents
 agent_versions
-
-tools
-agent_tools
-
-data_sources
 ```
 
-PostgreSQL becomes the platform store and Alembic manages schema migration.
+`agents` stores resource identity and lifecycle:
+
+```text
+id
+name
+slug
+description
+type
+status
+built_in
+published_version
+created_by
+created_at
+updated_at
+```
+
+`agent_versions` stores immutable configuration versions:
+
+```text
+id
+agent_id
+version
+status
+
+instructions
+model_provider
+model
+temperature
+max_tokens
+max_steps
+timeout_seconds
+
+tool_config
+knowledge_config
+data_config
+guardrail_config
+
+created_by
+created_at
+published_at
+```
+
+SQLAlchemy defines the runtime model and Alembic owns schema migration. Compose points `PLATFORM_DATABASE_URL` at PostgreSQL. The lightweight standalone demo may use SQLite.
+
+The next milestone introduces Tool Registry and Agent ↔ Tool resources; Data Source promotion remains a later resource-model step rather than being pulled into M1.
 
 ## 9. Long-term target
 

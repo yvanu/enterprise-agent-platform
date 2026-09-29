@@ -1,5 +1,36 @@
 # Changelog
 
+## v0.2.0
+
+Dynamic Agent Platform milestone.
+
+### Agent resources
+
+- Added persistent Agent Definition and immutable Agent Version models.
+- Added Draft / Published / Archived lifecycle and Published Version rollback.
+- Added Agent CRUD, Version history, Publish, Archive, and Run APIs.
+- Runs now store `agent_id` and `agent_version` for execution provenance.
+- Migrated Data, Knowledge, Ops, and Supervisor into database-backed Built-in Agent definitions.
+- Added a Generic Custom Agent runtime using the published instructions/model configuration.
+
+### Web Console
+
+- Agents Directory is now API/resource driven instead of hard-coded.
+- Added New Agent flow.
+- Added managed Agent Detail with Overview, Playground, Runs, Evaluations, Versions, and Configuration.
+- Added publish/version controls and admin-only archive action.
+- Added Agent Version and Agent ID to Run Inspector.
+- Added Chinese/English copy for the new Agent management surfaces.
+
+### Persistence / Engineering
+
+- Added SQLAlchemy Agent resource store.
+- Added Alembic and initial `agents` / `agent_versions` migration.
+- Added PostgreSQL-backed Agent Store to Docker Compose.
+- Docker startup applies Alembic migrations before starting FastAPI.
+- Kept legacy Run / Approval persistence unchanged for compatibility; those move with the Async Runtime milestone.
+- Expanded automated coverage to 60 tests.
+
 ## Unreleased
 
 - Added Web/API one-click isolated incident demo backed by the actual Data, Knowledge, Ops, and Supervisor code paths.

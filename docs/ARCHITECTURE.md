@@ -37,6 +37,54 @@ flowchart TB
   EVAL --> METRICS[Quality Metrics / Prometheus]
 ```
 
+## Dynamic Agent Platform
+
+从 v0.2 开始，Agent 不再只是代码中的固定类，而是由平台持久化管理的资源：
+
+```text
+Agent Definition
+      │
+      ├── name / slug / type / status
+      ├── built_in
+      └── published_version
+               │
+               ▼
+        Agent Version
+        ├── instructions
+        ├── model
+        ├── temperature
+        ├── max_steps
+        ├── timeout
+        ├── tool_config
+        ├── knowledge_config
+        ├── data_config
+        └── guardrail_config
+```
+
+生命周期：
+
+```text
+Create Agent
+    ↓
+Draft v1
+    ↓
+Playground
+    ↓
+Publish
+    ↓
+Published v1
+    ↓
+Create Draft v2
+    ↓
+Publish / Roll back
+```
+
+Published Version 不允许原地修改。所有 Run 会记录 `agent_id + agent_version`，从而可以追溯一次执行到底使用了哪一版配置。
+
+Data / Knowledge / Ops / Supervisor 目前作为 Built-in Agent Definition 预置到同一套 Store；Custom Agent 通过统一 Runtime Adapter 执行 Published Version。Tool Registry 会在下一阶段把当前 Runtime Adapter 中的领域 Tool 绑定进一步资源化。
+
+Agent Definition / Version 使用 SQLAlchemy + Alembic。Compose 环境下通过 PostgreSQL 保存；单进程演示环境仍允许 SQLite，以保持本地启动成本低。
+
 ## 跨 Agent 故障调查
 
 ```mermaid
@@ -119,7 +167,8 @@ Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。�
 | --- | --- | --- |
 | Demo 业务数据 | SQLite / 外部 SQLAlchemy 数据库 | PostgreSQL / Kingbase |
 | Knowledge Chunk + Embedding | SQLite | pgvector / 托管向量数据库 |
-| Runs / Approvals | SQLite | PostgreSQL |
+| Agent Definition / Version | PostgreSQL（Compose）/ SQLite（轻量 Demo） | PostgreSQL |
+| Runs / Approvals | SQLite（v0.1 兼容） | v0.3 Async Runtime 时迁 PostgreSQL |
 | Auth Identity | 配置 Token Map + 进程内 Web Session | OIDC / 企业 IdP + 共享 Session Store |
 
 当前使用 SQLite 是为了让 Demo 自包含，而不是认为 SQLite 适合所有生产场景。平台接口层保留了迁移路径，避免在没有规模证据时提前引入基础设施。
@@ -136,7 +185,7 @@ Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。�
 ## 扩展路径
 
 1. 静态 Bearer Token 升级为 OIDC/JWT。
-2. Platform State 与 Knowledge Metadata 迁 PostgreSQL。
+2. Agent Definition / Version 已开始迁 PostgreSQL；Runs / Approvals 在 Async Runtime 阶段统一迁移。
 3. 当知识库规模/P95 有真实压力时，把 O(n) Embedding Scan 替换为 pgvector。
 4. 除 Role Scope 外加入 Tenant/User ACL Predicate。
 5. 当故障调查延迟成为实际瓶颈时并行化 Supervisor。

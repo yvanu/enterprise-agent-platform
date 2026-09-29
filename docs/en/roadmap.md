@@ -182,7 +182,7 @@ M0 is closed. New capabilities belong to v0.2+ milestones rather than changing t
 
 # 6. M1 — Dynamic Agent Platform
 
-**Status: ▶ Next milestone**
+**Status: ✅ Completed (2026-09-29)**
 
 **Priority: P0**
 
@@ -304,20 +304,37 @@ Migrate Data, Knowledge, Ops and Supervisor into database-backed built-in agent 
 
 Acceptance:
 
-- [ ] Create Agent
-- [ ] Edit Agent
-- [ ] Draft Version
-- [ ] Version History
-- [ ] Publish
-- [ ] Archive
-- [ ] Playground
-- [ ] Run stores Agent Version
-- [ ] Built-in agents migrated
-- [ ] One custom agent can run end to end
+- [x] Create Agent
+- [x] Edit Agent
+- [x] Draft Version
+- [x] Version History
+- [x] Publish
+- [x] Archive
+- [x] Playground
+- [x] Run stores Agent Version
+- [x] Built-in agents migrated
+- [x] One custom agent can run end to end
+
+### M1 acceptance evidence
+
+- Added SQLAlchemy `agents` / `agent_versions` models.
+- Alembic migration verified with a real SQLite upgrade and PostgreSQL offline DDL generation.
+- Docker Compose uses PostgreSQL for the Dynamic Agent Store.
+- Added `/api/v1/agents` resource APIs, version history, publish/rollback, archive, and run.
+- Agents Directory is API-driven instead of hard-coded.
+- Agent Detail supports Overview / Playground / Runs / Evaluations / Versions / Configuration.
+- Runs persist `agent_id + agent_version`.
+- Data / Knowledge / Ops / Supervisor seed as Built-in Agent Definitions.
+- Custom Generic Agent lifecycle is covered end-to-end: Create → Publish → Run → New Version → Publish → Rollback → Archive.
+- Current regression: `60 passed`.
+
+M1 is closed. The next milestone is M2: Tool Platform.
 
 ---
 
 # 7. M2 — Tool Platform
+
+**Status: ▶ Next milestone**
 
 **Priority: P0**
 

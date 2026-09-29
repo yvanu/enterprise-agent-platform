@@ -1,6 +1,6 @@
 [project]
 name = "enterprise-agent-platform"
-version = "0.1.0"
+version = "0.2.0"
 description = "Enterprise multi-agent platform for data, knowledge, and operations"
 requires-python = ">=3.11"
 dependencies = [
@@ -14,6 +14,7 @@ dependencies = [
   "python-multipart>=0.0.9,<1",
   "pypdf>=5,<7",
   "python-docx>=1.1,<2",
+  "alembic>=1.14,<2",
 ]
 
 [project.optional-dependencies]

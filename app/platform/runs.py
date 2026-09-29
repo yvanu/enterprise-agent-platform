@@ -19,6 +19,8 @@ class RunRecord(BaseModel):
     error_type: str | None = None
     request_id: str | None = None
     correlation_id: str | None = None
+    agent_id: str | None = None
+    agent_version: int | None = None
     created_at: str
 
 
@@ -38,6 +40,8 @@ class RunStore:
                     error_type TEXT,
                     request_id TEXT,
                     correlation_id TEXT,
+                    agent_id TEXT,
+                    agent_version INTEGER,
                     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """
@@ -50,6 +54,10 @@ class RunStore:
                 conn.execute("ALTER TABLE agent_runs ADD COLUMN request_id TEXT")
             if "correlation_id" not in columns:
                 conn.execute("ALTER TABLE agent_runs ADD COLUMN correlation_id TEXT")
+            if "agent_id" not in columns:
+                conn.execute("ALTER TABLE agent_runs ADD COLUMN agent_id TEXT")
+            if "agent_version" not in columns:
+                conn.execute("ALTER TABLE agent_runs ADD COLUMN agent_version INTEGER")
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.path)
@@ -64,6 +72,8 @@ class RunStore:
         error_type: str | None = None,
         request_id: str | None = None,
         correlation_id: str | None = None,
+        agent_id: str | None = None,
+        agent_version: int | None = None,
     ) -> int:
         payload = json.dumps(
             [step.model_dump() for step in (trace or [])],
@@ -75,9 +85,9 @@ class RunStore:
                 INSERT INTO agent_runs
                 (
                     agent, status, duration_ms, trace_json, error_type,
-                    request_id, correlation_id
+                    request_id, correlation_id, agent_id, agent_version
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     agent,
@@ -87,6 +97,8 @@ class RunStore:
                     error_type,
                     request_id,
                     correlation_id,
+                    agent_id,
+                    agent_version,
                 ),
             )
         return int(cursor.lastrowid)
@@ -102,7 +114,9 @@ class RunStore:
             error_type=row[5],
             request_id=row[6],
             correlation_id=row[7],
-            created_at=row[8],
+            agent_id=row[8],
+            agent_version=row[9],
+            created_at=row[10],
         )
 
     def get(self, run_id: int) -> RunRecord | None:
@@ -110,7 +124,8 @@ class RunStore:
             row = conn.execute(
                 """
                 SELECT id, agent, status, duration_ms, trace_json, error_type,
-                       request_id, correlation_id, created_at
+                       request_id, correlation_id, agent_id, agent_version,
+                       created_at
                 FROM agent_runs
                 WHERE id = ?
                 """,
@@ -122,7 +137,8 @@ class RunStore:
         limit = max(1, min(limit, 200))
         sql = """
             SELECT id, agent, status, duration_ms, trace_json, error_type,
-                   request_id, correlation_id, created_at
+                   request_id, correlation_id, agent_id, agent_version,
+                   created_at
             FROM agent_runs
         """
         params: list[object] = []
@@ -142,15 +158,23 @@ run_store = RunStore(get_settings().platform_db_path)
 
 
 class RunTimer:
-    def __init__(self, agent: str):
+    def __init__(
+        self,
+        agent: str,
+        *,
+        agent_id: str | None = None,
+        agent_version: int | None = None,
+    ):
         self.agent = agent
+        self.agent_id = agent_id
+        self.agent_version = agent_version
         self.started = perf_counter()
         self.request_id, self.correlation_id = current_request_context()
 
     def _duration_ms(self) -> int:
         return round((perf_counter() - self.started) * 1000)
 
-    def success(self, trace: list[TraceStep]) -> None:
+    def success(self, trace: list[TraceStep]) -> int:
         duration_ms = self._duration_ms()
         run_id = run_store.record(
             agent=self.agent,
@@ -159,6 +183,8 @@ class RunTimer:
             trace=trace,
             request_id=self.request_id,
             correlation_id=self.correlation_id,
+            agent_id=self.agent_id,
+            agent_version=self.agent_version,
         )
         log_event(
             "agent_run",
@@ -168,9 +194,12 @@ class RunTimer:
             duration_ms=duration_ms,
             request_id=self.request_id,
             correlation_id=self.correlation_id,
+            agent_id=self.agent_id,
+            agent_version=self.agent_version,
         )
+        return run_id
 
-    def error(self, exc: Exception) -> None:
+    def error(self, exc: Exception) -> int:
         duration_ms = self._duration_ms()
         run_id = run_store.record(
             agent=self.agent,
@@ -179,6 +208,8 @@ class RunTimer:
             error_type=type(exc).__name__,
             request_id=self.request_id,
             correlation_id=self.correlation_id,
+            agent_id=self.agent_id,
+            agent_version=self.agent_version,
         )
         log_event(
             "agent_run",
@@ -189,8 +220,27 @@ class RunTimer:
             error_type=type(exc).__name__,
             request_id=self.request_id,
             correlation_id=self.correlation_id,
+            agent_id=self.agent_id,
+            agent_version=self.agent_version,
         )
+        return run_id
 
 
-def start_run(agent: str) -> RunTimer:
-    return RunTimer(agent)
+def start_run(
+    agent: str,
+    *,
+    agent_id: str | None = None,
+    agent_version: int | None = None,
+) -> RunTimer:
+    if agent_id is None or agent_version is None:
+        try:
+            from app.modules.agents.service import agent_service
+
+            ref = agent_service.builtin_ref(agent)
+            if ref is not None:
+                agent_id = agent_id or ref.id
+                agent_version = agent_version or ref.version
+        except Exception:
+            # Run recording must stay available during bootstrap and migrations.
+            pass
+    return RunTimer(agent, agent_id=agent_id, agent_version=agent_version)

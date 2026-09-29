@@ -301,7 +301,7 @@ M0 正式关闭。后续新增能力必须进入 v0.2+ 对应 Milestone，不继
 
 # 6. M1：Dynamic Agent Platform
 
-**状态：▶ 下一阶段**
+**状态：✅ 已完成（2026-09-29）**
 
 **优先级：P0**
 
@@ -500,20 +500,37 @@ Model / Tools / Knowledge / Data
 
 ## M1 验收
 
-- [ ] 创建 Agent
-- [ ] 编辑 Agent
-- [ ] Draft Version
-- [ ] Version History
-- [ ] Publish
-- [ ] Archive
-- [ ] Playground
-- [ ] Run 保存 Agent Version
-- [ ] 4 个 Built-in Agent 完成迁移
-- [ ] 新建一个 Custom Agent 可以运行
+- [x] 创建 Agent
+- [x] 编辑 Agent
+- [x] Draft Version
+- [x] Version History
+- [x] Publish
+- [x] Archive
+- [x] Playground
+- [x] Run 保存 Agent Version
+- [x] 4 个 Built-in Agent 完成迁移
+- [x] 新建一个 Custom Agent 可以运行
+
+### M1 验收证据
+
+- 新增 `agents` / `agent_versions` SQLAlchemy 数据模型
+- Alembic Migration 已通过 SQLite 实际升级与 PostgreSQL Offline DDL 验证
+- Docker Compose 的 Dynamic Agent Store 使用 PostgreSQL
+- 新增 `/api/v1/agents` 资源 API、Version History、Publish / Rollback、Archive、Run
+- Web Console Agent Directory 已由 API 驱动，不再写死 4 个 Agent
+- Agent Detail 已支持 Overview / Playground / Runs / Evaluations / Versions / Configuration
+- Run 记录 `agent_id + agent_version`
+- Data / Knowledge / Ops / Supervisor 已自动 Seed 为 Built-in Agent Definition
+- Custom Generic Agent 已通过 Create → Publish → Run → New Version → Publish → Rollback → Archive 自动化测试
+- 当前自动化回归：`60 passed`
+
+M1 正式关闭。下一阶段进入 M2：Tool Platform。
 
 ---
 
 # 7. M2：Tool Platform
+
+**状态：▶ 下一阶段**
 
 **优先级：P0**
 

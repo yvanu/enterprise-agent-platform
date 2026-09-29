@@ -14,6 +14,7 @@ def test_health_endpoints():
         "database": "ok",
         "platform_store": "ok",
         "knowledge_store": "ok",
+        "agent_store": "ok",
     }
 
 

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     ops_command_timeout_seconds: int = 5
 
     platform_db_path: str = "./data/platform.db"
+    platform_database_url: str = "sqlite:///./data/platform_resources.db"
 
     model_config = SettingsConfigDict(
         env_file=".env",

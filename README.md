@@ -6,6 +6,23 @@
 
 面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Web Session / Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。Web Console 采用资源化 Enterprise SaaS 信息架构，统一管理 Agents、Knowledge、Data Sources、Runs、Evaluations、Approvals、Integrations、Credentials 与 Policies。
 
+## v0.2 Dynamic Agent Platform
+
+Agent 已从代码中的固定对象升级为平台一等资源。当前支持：
+
+- 动态创建 Custom Agent
+- Draft / Published / Archived 生命周期
+- 不可变 Agent Version
+- Published Version 回滚/重新发布
+- Agent Detail / Playground / Versions / Configuration
+- Run 记录 `agent_id + agent_version`
+- Data / Knowledge / Ops / Supervisor 作为数据库中的 Built-in Agent Definition
+- Generic Agent 使用统一 Runtime Adapter 执行当前 Published Version
+- `agents` / `agent_versions` 采用 SQLAlchemy 模型与 Alembic Migration
+- Compose 环境使用 PostgreSQL 保存 Dynamic Agent Platform 资源
+
+当前仍保留 Runs / Approvals 的 v0.1 SQLite Store，等 v0.3 Async Runtime 时一起迁移，避免在 M1 提前耦合未来的 Queue / Worker / Run State Machine。
+
 ## 业务 Agent 与 Supervisor
 
 ### Data Agent
@@ -62,6 +79,8 @@ app/
 │   ├── knowledge/
 │   ├── ops/
 │   └── supervisor/     # 跨 Agent 故障调查编排
+├── modules/
+│   └── agents/         # Agent Definition / Version / Repository / Runtime Adapter
 ├── platform/
 │   ├── llm.py          # Chat + Embedding，共享 Runtime
 │   ├── policy.py       # Tool 风险与权限清单
@@ -71,6 +90,7 @@ app/
 │   ├── evals.py        # 基于 Trace 的确定性 Eval
 │   └── regression.py   # 固定业务样本回归测试
 ├── api/
+│   ├── agents.py       # Dynamic Agent CRUD / Version / Publish / Run
 │   ├── data.py
 │   ├── knowledge.py
 │   └── ops.py
@@ -169,7 +189,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-`/app/data` 使用 Docker volume 持久化。Compose healthcheck 使用 `/health/ready`。若接企业 PostgreSQL/Kingbase，只需通过 `DATABASE_URL` 或 `DATA_SOURCES` 配置连接，不会在启动时修改非 SQLite 业务库。
+`/app/data` 使用 Docker volume 持久化 legacy Run/Approval、Knowledge 与 Demo 数据；Dynamic Agent Definition / Version 在 Compose 中使用独立 PostgreSQL volume。容器启动时先执行 `alembic upgrade head` 再启动 FastAPI。Compose healthcheck 使用 `/health/ready`。业务数据源仍通过 `DATABASE_URL` 或 `DATA_SOURCES` 独立配置，不会在启动时修改非 SQLite 业务库。
 
 提供一个只依赖 Python 标准库的轻量压测脚本：
 
@@ -229,6 +249,17 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 - `POST /api/v1/auth/login`：Web Console 用户名/密码登录并创建 HttpOnly Session
 - `POST /api/v1/auth/logout`：注销当前 Web Session
 - `GET /api/v1/auth/me`：返回当前认证用户和角色
+
+### Agents
+- `GET /api/v1/agents`：Agent Directory
+- `POST /api/v1/agents`：创建 Custom Agent Draft
+- `GET /api/v1/agents/{id}`：Agent Detail + Versions
+- `PATCH /api/v1/agents/{id}`：更新 Agent 名称/描述
+- `GET /api/v1/agents/{id}/versions`：版本历史
+- `POST /api/v1/agents/{id}/versions`：从最新版本创建 Draft Version
+- `POST /api/v1/agents/{id}/publish`：发布或回滚到指定 Version
+- `POST /api/v1/agents/{id}/archive`：归档 Custom Agent
+- `POST /api/v1/agents/{id}/run`：执行当前 Published Version
 
 ### Platform
 - `GET /api/v1/platform/tools`：统一 Tool Policy 清单

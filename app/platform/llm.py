@@ -26,8 +26,15 @@ class OpenAICompatibleLLM:
         api_key = self.settings.llm_api_key.get_secret_value()
         return {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
-    def chat(self, messages: list[dict[str, str]]) -> str:
-        if not self.settings.llm_model:
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        model: str | None = None,
+        temperature: float = 0,
+    ) -> str:
+        selected_model = model or self.settings.llm_model
+        if not selected_model:
             raise LLMNotConfiguredError("请配置 LLM_MODEL")
 
         with httpx.Client(
@@ -38,9 +45,9 @@ class OpenAICompatibleLLM:
                 "chat/completions",
                 headers=self._headers(),
                 json={
-                    "model": self.settings.llm_model,
+                    "model": selected_model,
                     "messages": messages,
-                    "temperature": 0,
+                    "temperature": temperature,
                 },
             )
             response.raise_for_status()

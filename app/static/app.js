@@ -13,11 +13,15 @@ const state = {
   lastReport: "",
   editingSource: null,
   editingIntegration: null,
+  agents: [],
+  selectedAgentId: null,
+  selectedAgent: null,
 };
 
 const PAGES = {
   home: "Home",
   agents: "Agents",
+  "agent-detail": "Agent",
   data: "Data Agent",
   "knowledge-agent": "Knowledge Agent",
   ops: "Ops Agent",
@@ -79,9 +83,10 @@ async function api(url, options = {}) {
 }
 const post = (url, body) => api(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
 const put = (url, body) => api(url, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+const patch = (url, body) => api(url, {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
 
 function setNav(page) {
-  const navPage = ["data","knowledge-agent","ops","supervisor"].includes(page) ? "agents" : page;
+  const navPage = ["agent-detail","data","knowledge-agent","ops","supervisor"].includes(page) ? "agents" : page;
   $$(".nav-item").forEach(el => el.classList.toggle("active", el.dataset.page === navPage));
 }
 
@@ -99,6 +104,7 @@ async function refreshPage(page) {
   try {
     if (page === "home") await loadHome();
     if (page === "agents") await loadAgentDirectory();
+    if (page === "agent-detail") await loadManagedAgentDetail();
     if (page === "data") await Promise.all([loadSources(), loadSchema()]);
     if (page === "ops") await loadOps();
     if (page === "supervisor") await loadSources();
@@ -149,15 +155,17 @@ function metricFor(agent) { return state.metrics.find(x => x.agent === agent); }
 function latestRun(agent) { return state.runs.find(x => x.agent === agent); }
 
 async function loadHome() {
-  const [metrics, runs, approvals, settings] = await Promise.all([
+  const [metrics, runs, approvals, settings, agents] = await Promise.all([
     api("/api/v1/platform/metrics?limit=200").catch(() => []),
     api("/api/v1/platform/runs?limit=200").catch(() => []),
     api("/api/v1/platform/approvals?limit=50").catch(() => []),
     getPlatformSettings(true).catch(() => null),
+    api("/api/v1/agents").catch(() => []),
   ]);
   state.metrics = metrics;
   state.runs = runs;
   state.approvals = approvals;
+  state.agents = agents;
   if (settings) state.settings = settings;
   await loadIdentity();
 
@@ -209,33 +217,46 @@ function renderAttention(settings) {
   bindGo($("attentionList"));
 }
 
-function agentStatus(agent) {
-  const metric = metricFor(agent);
-  const last = latestRun(agent);
+function agentTypeMeta(type) {
+  const preset = AGENTS[type];
+  if (preset) return preset;
+  return {page:"agent-detail", name:"Agent", kind:"Custom", desc:"Custom managed agent.", icon:"bot", cls:"supervisor"};
+}
+
+function agentResourceStatus(agent) {
+  if (agent.status === "archived") return {label:"Archived", cls:"neutral"};
+  if (agent.status === "draft") return {label:"Draft", cls:"warning"};
+  const metric = metricFor(agent.type === "generic" ? agent.slug : agent.type);
+  const last = latestRun(agent.type === "generic" ? agent.slug : agent.type);
   if (last?.status === "error") return {label:"Degraded", cls:"warning"};
-  if (!metric) return {label:"No data", cls:"neutral"};
+  if (!metric) return {label:"Published", cls:"healthy"};
   return {label:"Healthy", cls:"healthy"};
 }
 
-function agentRow(key, large = false) {
-  const a = AGENTS[key];
-  const metric = metricFor(key);
-  const last = latestRun(key);
-  const status = agentStatus(key);
-  const meta = metric
-    ? '<span>' + metric.success_rate + '% success</span><span>P95 ' + esc(duration(metric.p95_duration_ms)) + '</span><span>' + metric.runs + ' runs</span>'
-    : '<span>No runtime metrics</span>';
-  return '<div class="resource-row" data-agent-page="' + a.page + '" data-agent-key="' + key + '">' +
-    '<div class="resource-icon ' + a.cls + '">' + icon(a.icon) + '</div>' +
-    '<div class="resource-main"><strong>' + esc(a.name) + '</strong><p>' + esc(a.desc) + '</p></div>' +
-    '<div class="resource-actions"><div class="resource-meta">' + meta + '</div><span class="status-chip ' + status.cls + '">' + status.label + '</span>' +
+function agentResourceRow(agent) {
+  const meta = agentTypeMeta(agent.type);
+  const metricKey = agent.type === "generic" ? agent.slug : agent.type;
+  const metric = metricFor(metricKey);
+  const last = latestRun(metricKey);
+  const status = agentResourceStatus(agent);
+  const versionMeta = '<span>' + (agent.published_version ? "v" + agent.published_version + " published" : "No published version") + '</span>' +
+    '<span>v' + (agent.latest_version || 1) + ' latest</span>' +
+    (agent.built_in ? '<span>Built-in</span>' : '<span>Custom</span>');
+  const runtimeMeta = metric
+    ? '<span>' + metric.success_rate + '% success</span><span>P95 ' + esc(duration(metric.p95_duration_ms)) + '</span>'
+    : versionMeta;
+  return '<div class="resource-row" data-managed-agent-id="' + esc(agent.id) + '">' +
+    '<div class="resource-icon ' + meta.cls + '">' + icon(meta.icon) + '</div>' +
+    '<div class="resource-main"><strong>' + esc(agent.name) + '</strong><p>' + esc(agent.description || meta.desc) + '</p></div>' +
+    '<div class="resource-actions"><div class="resource-meta">' + runtimeMeta + '</div><span class="status-chip ' + status.cls + '">' + status.label + '</span>' +
     (last ? '<button class="icon-btn" data-open-run="' + last.id + '" title="Open latest run">' + icon("chevron") + '</button>' : '') + '</div></div>';
 }
 
-function bindAgentRows(root) {
-  $$("[data-agent-page]", root).forEach(row => row.onclick = e => {
+function bindManagedAgentRows(root) {
+  $$("[data-managed-agent-id]", root).forEach(row => row.onclick = e => {
     if (e.target.closest("[data-open-run]")) return;
-    navigate(row.dataset.agentPage);
+    state.selectedAgentId = row.dataset.managedAgentId;
+    navigate("agent-detail");
   });
   $$("[data-open-run]", root).forEach(button => button.onclick = e => {
     e.stopPropagation();
@@ -244,28 +265,207 @@ function bindAgentRows(root) {
 }
 
 function renderHomeAgents() {
-  $("homeAgents").innerHTML = Object.keys(AGENTS).map(key => agentRow(key)).join("");
-  bindAgentRows($("homeAgents"));
+  const agents = state.agents.filter(x => x.status !== "archived").slice(0, 5);
+  $("homeAgents").innerHTML = agents.length ? agents.map(agentResourceRow).join("") : '<div class="empty-state">No agents yet.</div>';
+  bindManagedAgentRows($("homeAgents"));
 }
 
 async function loadAgentDirectory() {
-  const [metrics, runs] = await Promise.all([
+  const [agents, metrics, runs] = await Promise.all([
+    api("/api/v1/agents"),
     api("/api/v1/platform/metrics?limit=200").catch(() => []),
     api("/api/v1/platform/runs?limit=200").catch(() => []),
   ]);
-  state.metrics = metrics; state.runs = runs;
+  state.agents = agents; state.metrics = metrics; state.runs = runs;
   renderAgentDirectory();
 }
 
 function renderAgentDirectory() {
   const q = ($("agentSearch").value || "").trim().toLowerCase();
-  const keys = Object.keys(AGENTS).filter(key => {
-    const a = AGENTS[key];
-    return !q || [a.name,a.kind,a.desc,uiText(a.name),uiText(a.kind),uiText(a.desc)].some(v => String(v).toLowerCase().includes(q));
+  const agents = state.agents.filter(agent => {
+    const meta = agentTypeMeta(agent.type);
+    return !q || [agent.name,agent.slug,agent.description,agent.type,meta.kind,uiText(agent.name),uiText(agent.description)].some(v => String(v || "").toLowerCase().includes(q));
   });
-  $("agentCount").textContent = keys.length + " agent" + (keys.length === 1 ? "" : "s");
-  $("agentDirectory").innerHTML = keys.map(key => agentRow(key, true)).join("");
-  bindAgentRows($("agentDirectory"));
+  $("agentCount").textContent = agents.length + " agent" + (agents.length === 1 ? "" : "s");
+  $("agentDirectory").innerHTML = agents.length ? agents.map(agentResourceRow).join("") : '<div class="empty-state">No matching agents.</div>';
+  bindManagedAgentRows($("agentDirectory"));
+}
+
+async function loadManagedAgentDetail() {
+  if (!state.selectedAgentId) {
+    navigate("agents");
+    return;
+  }
+  const agent = await api("/api/v1/agents/" + encodeURIComponent(state.selectedAgentId));
+  state.selectedAgent = agent;
+  const meta = agentTypeMeta(agent.type);
+  $("managedAgentName").textContent = agent.name;
+  $("managedAgentDescription").textContent = agent.description || meta.desc;
+  $("managedAgentStatus").textContent = titleCase(agent.status);
+  $("managedAgentStatus").className = "status-chip " + (agent.status === "published" ? "healthy" : agent.status === "draft" ? "warning" : "neutral");
+  $("managedAgentIcon").className = "agent-icon " + meta.cls;
+  $("managedAgentIcon").innerHTML = icon(meta.icon);
+  $("managedAgentType").textContent = titleCase(agent.type);
+  $("managedAgentPublishedVersion").textContent = agent.published_version ? "v" + agent.published_version : "—";
+  $("managedAgentLatestVersion").textContent = agent.latest_version ? "v" + agent.latest_version : "—";
+  $("managedAgentCreatedBy").textContent = agent.created_by;
+  $("managedAgentMessageName").textContent = agent.name;
+
+  const builtInPage = AGENTS[agent.type]?.page;
+  $("openBuiltinWorkspace").classList.toggle("hidden", !builtInPage);
+  $("openBuiltinWorkspace").dataset.page = builtInPage || "";
+  $("archiveManagedAgent").classList.toggle("hidden", agent.built_in || agent.status === "archived" || state.identity?.role !== "admin");
+
+  $("managedAgentEditName").value = agent.name;
+  $("managedAgentEditDescription").value = agent.description || "";
+  const latest = agent.versions[0];
+  if (latest) {
+    $("managedAgentInstructions").value = latest.instructions || "";
+    $("managedAgentModel").value = latest.model || "";
+    $("managedAgentTemperature").value = latest.temperature ?? 0.2;
+    $("managedAgentMaxSteps").value = latest.max_steps ?? 8;
+    $("managedAgentTimeout").value = latest.timeout_seconds ?? 60;
+  }
+  renderManagedAgentVersions(agent);
+}
+
+function renderManagedAgentVersions(agent) {
+  $("managedAgentVersions").innerHTML = agent.versions.map(version => {
+    const statusClass = version.status === "published" ? "healthy" : version.status === "draft" ? "warning" : "neutral";
+    const publish = version.status === "draft" && agent.status !== "archived"
+      ? '<button class="secondary-btn small" data-publish-agent-version="' + version.version + '">Publish</button>'
+      : "";
+    return '<div class="resource-row"><div class="resource-icon">' + icon("activity") + '</div><div class="resource-main"><strong>v' +
+      version.version + '</strong><p>' + esc(version.model || "Platform default model") + ' · ' + esc(version.created_by) + ' · ' +
+      esc(new Date(version.created_at).toLocaleString()) + '</p></div><div class="resource-actions"><span class="status-chip ' + statusClass + '">' +
+      esc(titleCase(version.status)) + '</span>' + publish + '</div></div>';
+  }).join("") || '<div class="empty-state">No versions.</div>';
+
+  $$("[data-publish-agent-version]", $("managedAgentVersions")).forEach(button => {
+    button.onclick = async () => {
+      button.disabled = true;
+      try {
+        await post("/api/v1/agents/" + encodeURIComponent(agent.id) + "/publish", {version:Number(button.dataset.publishAgentVersion)});
+        toast("Agent version published");
+        await loadManagedAgentDetail();
+        await loadAgentDirectory();
+      } catch (error) {
+        toast(error.message, "error");
+      } finally {
+        button.disabled = false;
+      }
+    };
+  });
+}
+
+async function createAgent() {
+  const name = $("newAgentName").value.trim();
+  if (!name) return toast("Agent name is required", "error");
+  $("createAgentButton").disabled = true;
+  $("newAgentStatus").textContent = "Creating draft…";
+  try {
+    const agent = await post("/api/v1/agents", {
+      name,
+      description:$("newAgentDescription").value.trim(),
+      type:$("newAgentType").value,
+      version:{
+        instructions:$("newAgentInstructions").value,
+        model:$("newAgentModel").value.trim(),
+        temperature:Number($("newAgentTemperature").value) || 0,
+        timeout_seconds:Number($("newAgentTimeout").value) || 60,
+      },
+    });
+    state.selectedAgentId = agent.id;
+    closeModal("agentModal");
+    $("newAgentStatus").textContent = "";
+    toast("Agent draft created");
+    navigate("agent-detail");
+  } catch (error) {
+    $("newAgentStatus").textContent = error.message;
+    toast(error.message, "error");
+  } finally {
+    $("createAgentButton").disabled = false;
+  }
+}
+
+function resetAgentModal() {
+  $("newAgentName").value = "";
+  $("newAgentDescription").value = "";
+  $("newAgentType").value = "generic";
+  $("newAgentModel").value = "";
+  $("newAgentInstructions").value = "";
+  $("newAgentTemperature").value = "0.2";
+  $("newAgentTimeout").value = "60";
+  $("newAgentStatus").textContent = "";
+}
+
+async function saveManagedAgentDetails() {
+  const agent = state.selectedAgent;
+  if (!agent) return;
+  try {
+    await patch("/api/v1/agents/" + encodeURIComponent(agent.id), {
+      name:$("managedAgentEditName").value.trim(),
+      description:$("managedAgentEditDescription").value.trim(),
+    });
+    toast("Agent details saved");
+    await loadManagedAgentDetail();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function createManagedAgentVersion() {
+  const agent = state.selectedAgent;
+  if (!agent) return;
+  $("createManagedAgentVersion").disabled = true;
+  try {
+    await post("/api/v1/agents/" + encodeURIComponent(agent.id) + "/versions", {
+      instructions:$("managedAgentInstructions").value,
+      model:$("managedAgentModel").value.trim(),
+      temperature:Number($("managedAgentTemperature").value) || 0,
+      max_steps:Number($("managedAgentMaxSteps").value) || 8,
+      timeout_seconds:Number($("managedAgentTimeout").value) || 60,
+    });
+    toast("Draft version created");
+    await loadManagedAgentDetail();
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    $("createManagedAgentVersion").disabled = false;
+  }
+}
+
+async function runManagedAgent() {
+  const agent = state.selectedAgent;
+  if (!agent) return;
+  $("runManagedAgent").disabled = true;
+  $("managedAgentAnswer").textContent = "Running published version…";
+  try {
+    const result = await post("/api/v1/agents/" + encodeURIComponent(agent.id) + "/run", {
+      input:$("managedAgentInput").value,
+      source:"default",
+    });
+    $("managedAgentAnswer").textContent = result.answer;
+    renderTrace("managedAgentTrace", result.trace || []);
+    toast("Agent run completed");
+  } catch (error) {
+    $("managedAgentAnswer").textContent = error.message;
+    toast(error.message, "error");
+  } finally {
+    $("runManagedAgent").disabled = false;
+  }
+}
+
+async function archiveManagedAgent() {
+  const agent = state.selectedAgent;
+  if (!agent) return;
+  try {
+    await post("/api/v1/agents/" + encodeURIComponent(agent.id) + "/archive", {});
+    toast("Agent archived");
+    navigate("agents");
+  } catch (error) {
+    toast(error.message, "error");
+  }
 }
 
 function renderActivity() {
@@ -532,9 +732,12 @@ async function openRun(id) {
       '<div class="run-summary"><div class="summary-box"><span>Agent</span><strong>' + esc(AGENTS[run.agent]?.name || titleCase(run.agent)) +
       '</strong></div><div class="summary-box"><span>Status</span><strong>' + esc(run.status === "ok" ? "Success" : "Error") +
       '</strong></div><div class="summary-box"><span>Duration</span><strong>' + esc(duration(run.duration_ms)) + '</strong></div></div>' +
+      '<div class="run-summary" style="margin-top:8px"><div class="summary-box"><span>Agent version</span><strong>' +
+      esc(run.agent_version ? "v" + run.agent_version : "—") + '</strong></div><div class="summary-box"><span>Agent ID</span><strong>' +
+      esc(run.agent_id || "—") + '</strong></div><div class="summary-box"><span>Eval</span><strong>' + esc(ev.score) + '/100</strong></div></div>' +
       '<div class="run-summary" style="margin-top:8px"><div class="summary-box"><span>Request ID</span><strong>' + esc(run.request_id || "—") +
       '</strong></div><div class="summary-box"><span>Correlation</span><strong>' + esc(run.correlation_id || "—") +
-      '</strong></div><div class="summary-box"><span>Eval</span><strong>' + esc(ev.score) + '/100</strong></div></div>' +
+      '</strong></div><div class="summary-box"><span>Created</span><strong>' + esc(run.created_at || "—") + '</strong></div></div>' +
       '<h3 class="trace-title">Execution trace</h3><div class="trace-stack">' + (run.trace?.length ? run.trace.map(step =>
       '<div class="trace-step ' + (step.status === "error" ? "error" : "") + '"><strong>' + esc(titleCase(step.name)) + '</strong><span>' +
       esc(step.kind) + (step.detail ? " · " + esc(step.detail) : "") + '</span></div>').join("") : '<div class="empty-state">No trace captured. ' + esc(run.error_type || "") + '</div>') +
@@ -823,6 +1026,30 @@ function renderCommands() {
 bindGo();
 $$(".nav-item[data-page]").forEach(b => b.onclick = () => navigate(b.dataset.page));
 $("agentSearch").oninput = renderAgentDirectory;
+$("newAgentButton").onclick = () => { resetAgentModal(); openModal("agentModal"); };
+$("createAgentButton").onclick = createAgent;
+$("saveManagedAgentDetails").onclick = saveManagedAgentDetails;
+$("createManagedAgentVersion").onclick = createManagedAgentVersion;
+$("runManagedAgent").onclick = runManagedAgent;
+$("archiveManagedAgent").onclick = archiveManagedAgent;
+$("openBuiltinWorkspace").onclick = () => {
+  const page = $("openBuiltinWorkspace").dataset.page;
+  if (page) navigate(page);
+};
+$$("[data-managed-agent-tab]").forEach(button => button.onclick = () => {
+  $$("[data-managed-agent-tab]").forEach(item => item.classList.toggle("active", item === button));
+  $$("[data-managed-agent-pane]").forEach(pane => pane.classList.toggle("active", pane.dataset.managedAgentPane === button.dataset.managedAgentTab));
+});
+$$("[data-managed-agent-go]").forEach(button => button.onclick = () => {
+  const agent = state.selectedAgent;
+  if (!agent) return;
+  if (button.dataset.managedAgentGo === "runs") {
+    $("runAgentFilter").value = agent.type === "generic" ? agent.slug : agent.type;
+    navigate("runs");
+  } else {
+    navigate("evaluations");
+  }
+});
 $("dataSource").onchange = loadSchema;
 $("dataAsk").onclick = runDataAsk;
 $("runSql").onclick = runSql;
