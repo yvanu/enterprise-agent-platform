@@ -7,6 +7,7 @@ const zhTheme = {
   nav: [
     { text: '指南', link: '/getting-started' },
     { text: '架构', link: '/ARCHITECTURE' },
+    { text: '路线图', link: '/ROADMAP' },
     { text: '面试', link: '/INTERVIEW' },
     { text: '在线 Demo', link: 'https://agent.majhoon.site' }
   ],
@@ -16,7 +17,8 @@ const zhTheme = {
       items: [
         { text: '项目介绍', link: '/' },
         { text: '快速开始', link: '/getting-started' },
-        { text: '系统架构', link: '/ARCHITECTURE' }
+        { text: '系统架构', link: '/ARCHITECTURE' },
+        { text: '开发路线图', link: '/ROADMAP' }
       ]
     },
     {
@@ -60,6 +62,7 @@ const enTheme = {
   nav: [
     { text: 'Guide', link: '/en/getting-started' },
     { text: 'Architecture', link: '/en/ARCHITECTURE' },
+    { text: 'Roadmap', link: '/en/ROADMAP' },
     { text: 'Interview', link: '/en/INTERVIEW' },
     { text: 'Live Demo', link: 'https://agent.majhoon.site' }
   ],
@@ -69,7 +72,8 @@ const enTheme = {
       items: [
         { text: 'Introduction', link: '/en/' },
         { text: 'Getting Started', link: '/en/getting-started' },
-        { text: 'Architecture', link: '/en/ARCHITECTURE' }
+        { text: 'Architecture', link: '/en/ARCHITECTURE' },
+        { text: 'Development Roadmap', link: '/en/ROADMAP' }
       ]
     },
     {
