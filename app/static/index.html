@@ -16,6 +16,7 @@
   <symbol id="i-activity" viewBox="0 0 24 24"><path d="M3 12h4l2-7 4 14 2-7h6"/></symbol>
   <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
   <symbol id="i-approval" viewBox="0 0 24 24"><path d="M9 3h6l1 3h3v15H5V6h3z"/><path d="m8 13 2.5 2.5L16 10"/></symbol>
+  <symbol id="i-tool" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5 5L4 17l3 3 5.7-5.7a4 4 0 0 0 5-5l-2.4 2.4-3-3z"/></symbol>
   <symbol id="i-plug" viewBox="0 0 24 24"><path d="m8 12 8-8M14 4l6 6M4 14l6 6M6 12l6 6"/><path d="m4 20 4-4"/></symbol>
   <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l2 2M14 9l2 2"/></symbol>
   <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.8 3.1 8.1 7.5 9.5 4.4-1.4 7.5-4.7 7.5-9.5V6z"/><path d="m9 12 2 2 4-4"/></symbol>
@@ -53,6 +54,7 @@
       <button class="nav-item" data-page="approvals"><svg><use href="#i-approval"/></svg><span>Approvals</span><em id="approvalNavCount">0</em></button>
 
       <span class="nav-group">Platform</span>
+      <button class="nav-item" data-page="tools"><svg><use href="#i-tool"/></svg><span>Tools</span></button>
       <button class="nav-item" data-page="integrations"><svg><use href="#i-plug"/></svg><span>Integrations</span></button>
       <button class="nav-item" data-page="credentials"><svg><use href="#i-key"/></svg><span>Credentials</span></button>
       <button class="nav-item" data-page="policies"><svg><use href="#i-shield"/></svg><span>Policies</span></button>
@@ -362,6 +364,11 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
     <section class="page" data-page-panel="approvals">
       <header class="page-header"><div><h1>Approvals</h1><p>Review sensitive tool actions before execution.</p></div><button class="secondary-btn" id="refreshApprovals">Refresh</button></header>
       <div id="approvalCards" class="approval-list"></div>
+    </section>
+
+    <section class="page" data-page-panel="tools">
+      <header class="page-header"><div><h1>Tools</h1><p>Platform tool registry shared by agents, policies, approvals, and future MCP integrations.</p></div><button class="secondary-btn" id="refreshTools">Refresh</button></header>
+      <div class="dense-table"><table><thead><tr><th>Tool</th><th>Provider</th><th>Type</th><th>Mode</th><th>Risk</th><th>Approval</th><th>Status</th></tr></thead><tbody id="toolsTable"></tbody></table></div>
     </section>
 
     <section class="page" data-page-panel="integrations">

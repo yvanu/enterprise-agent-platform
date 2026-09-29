@@ -37,6 +37,7 @@ const PAGES = {
   approvals: "Approvals",
   integrations: "Integrations",
   credentials: "Credentials",
+  tools: "Tools",
   policies: "Policies",
   settings: "Settings",
 };
@@ -200,6 +201,7 @@ async function refreshPage(page) {
     if (page === "approvals") await loadApprovals();
     if (page === "integrations") await loadIntegrations();
     if (page === "credentials") await loadCredentials();
+    if (page === "tools") await loadTools();
     if (page === "policies") await loadPolicies();
     if (page === "settings") await Promise.all([loadIdentity(), loadRuntimeSettings()]);
   } catch (error) {
@@ -1012,6 +1014,18 @@ async function executeApproval(id) {
   } catch (error) { toast(error.message,"error"); }
 }
 
+async function loadTools() {
+  state.tools = await api("/api/v1/tools");
+  $("toolsTable").innerHTML = state.tools.map(tool => {
+    const riskClass = tool.risk === "high" ? "error" : tool.risk === "medium" ? "warning" : "healthy";
+    return '<tr><td><strong>' + esc(tool.display_name || tool.name) + '</strong><div class="muted-label">' + esc(tool.key) + '</div></td><td>' +
+      esc(titleCase(tool.provider)) + '</td><td>' + esc(titleCase(tool.type)) + '</td><td>' + esc(titleCase(tool.mode)) +
+      '</td><td><span class="status-chip ' + riskClass + '">' + esc(titleCase(tool.risk)) + '</span></td><td>' +
+      (tool.approval_required ? "Required" : "No") + '</td><td><span class="status-chip ' + (tool.enabled ? "healthy" : "") + '">' +
+      (tool.enabled ? "Enabled" : "Disabled") + '</span></td></tr>';
+  }).join("") || '<tr><td colspan="7"><div class="empty-state">No tools available.</div></td></tr>';
+}
+
 async function loadPolicies() {
   state.policies = await api("/api/v1/platform/tools");
   $("policyTable").innerHTML = state.policies.map(x =>
@@ -1217,6 +1231,7 @@ const COMMANDS = [
   {label:"Approvals", sub:"Review governed actions", page:"approvals", icon:"approval"},
   {label:"Integrations", sub:"Connect Ops infrastructure", page:"integrations", icon:"plug"},
   {label:"Credentials", sub:"Manage model provider secrets", page:"credentials", icon:"key"},
+  {label:"Tools", sub:"Browse the platform tool registry", page:"tools", icon:"tool"},
   {label:"Policies", sub:"Tool access and risk", page:"policies", icon:"shield"},
   {label:"Settings", sub:"Runtime and access defaults", page:"settings", icon:"settings"},
 ];
@@ -1239,6 +1254,7 @@ $("newAgentButton").onclick = () => { resetAgentModal(); openModal("agentModal")
 $("createAgentButton").onclick = createAgent;
 $("saveManagedAgentDetails").onclick = saveManagedAgentDetails;
 $("saveManagedAgentTools").onclick = saveManagedAgentTools;
+$("refreshTools").onclick = loadTools;
 $("createManagedAgentVersion").onclick = createManagedAgentVersion;
 $("runManagedAgent").onclick = runManagedAgent;
 $("archiveManagedAgent").onclick = archiveManagedAgent;
