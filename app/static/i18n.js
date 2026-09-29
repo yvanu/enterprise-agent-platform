@@ -205,6 +205,7 @@
     "Started": "开始时间",
     "Deterministic quality checks across agent execution paths.": "对智能体执行路径进行确定性质量评测。",
     "Run regression": "运行回归",
+    "Back to agent": "返回智能体",
     "Regression suite": "回归测试集",
     "Fixed samples with no external LLM dependency": "固定样本，不依赖外部 LLM",
     "Run regression to validate the core paths.": "运行回归测试以验证核心执行路径。",
@@ -479,6 +480,9 @@
       if ((m = text.match(/^(\d+) approval requests? (?:are|is) waiting$/))) return m[1] + " 个审批请求待处理";
       if ((m = text.match(/^(\d+) agents?$/))) return m[1] + " 个智能体";
       if ((m = text.match(/^(.+) has a failed recent run$/))) return agentName(m[1], "zh") + " 最近一次运行失败";
+      if ((m = text.match(/^Back to (.+)$/))) return "返回 " + agentName(m[1], "zh");
+      if ((m = text.match(/^Execution history for (.+)\.$/))) return agentName(m[1], "zh") + " 的运行记录。";
+      if ((m = text.match(/^Evaluation results for (.+)\.$/))) return agentName(m[1], "zh") + " 的评测结果。";
       if ((m = text.match(/^(.+) completed run #(\d+)$/))) return agentName(m[1], "zh") + " 已完成运行 #" + m[2];
       if ((m = text.match(/^(.+) failed run #(\d+)$/))) return agentName(m[1], "zh") + " 运行 #" + m[2] + " 失败";
       if ((m = text.match(/^Run #(\d+)$/))) return "运行 #" + m[1];

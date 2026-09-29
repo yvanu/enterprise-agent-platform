@@ -14,8 +14,11 @@ const state = {
   editingSource: null,
   editingIntegration: null,
   agents: [],
-  selectedAgentId: null,
+  selectedAgentId: sessionStorage.getItem("eapSelectedAgentId") || null,
   selectedAgent: null,
+  contextAgentId: null,
+  contextAgentName: null,
+  contextAgentKey: null,
 };
 
 const PAGES = {
@@ -85,19 +88,100 @@ const post = (url, body) => api(url, {method:"POST", headers:{"Content-Type":"ap
 const put = (url, body) => api(url, {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
 const patch = (url, body) => api(url, {method:"PATCH", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
 
+function parseRoute() {
+  const raw = location.hash.slice(1) || "home";
+  const [pagePart, query = ""] = raw.split("?");
+  const page = PAGES[pagePart] ? pagePart : "home";
+  return {page, params:new URLSearchParams(query)};
+}
+
+function routeHash(page) {
+  const params = new URLSearchParams();
+  if (page === "agent-detail" && state.selectedAgentId) {
+    params.set("agent", state.selectedAgentId);
+  }
+  if (["runs","evaluations"].includes(page) && state.contextAgentId) {
+    params.set("from", "agent-detail");
+    params.set("agent", state.contextAgentId);
+    if (state.contextAgentKey) params.set("key", state.contextAgentKey);
+  }
+  const query = params.toString();
+  return "#" + page + (query ? "?" + query : "");
+}
+
+function setRouteContext(page, options = {}) {
+  if (page === "agent-detail") {
+    if (options.agentId) state.selectedAgentId = options.agentId;
+    if (state.selectedAgentId) sessionStorage.setItem("eapSelectedAgentId", state.selectedAgentId);
+    state.contextAgentId = null;
+    state.contextAgentName = null;
+    state.contextAgentKey = null;
+    return;
+  }
+
+  if (["runs","evaluations"].includes(page)) {
+    const fromAgent = options.fromAgent || null;
+    if (fromAgent) {
+      state.contextAgentId = fromAgent.id;
+      state.contextAgentName = fromAgent.name;
+      state.contextAgentKey = fromAgent.key;
+    } else if (!options.preserveContext) {
+      state.contextAgentId = null;
+      state.contextAgentName = null;
+      state.contextAgentKey = null;
+    }
+  } else if (!options.preserveContext) {
+    state.contextAgentId = null;
+    state.contextAgentName = null;
+    state.contextAgentKey = null;
+  }
+}
+
 function setNav(page) {
   const navPage = ["agent-detail","data","knowledge-agent","ops","supervisor"].includes(page) ? "agents" : page;
   $$(".nav-item").forEach(el => el.classList.toggle("active", el.dataset.page === navPage));
 }
 
-function navigate(page) {
+function navigate(page, options = {}) {
   if (!PAGES[page]) return;
+  setRouteContext(page, options);
   state.page = page;
   setNav(page);
   $$(".page").forEach(el => el.classList.toggle("active", el.dataset.pagePanel === page));
-  history.replaceState(null, "", "#" + page);
+
+  if (options.history !== "none") {
+    const method = options.history === "replace" ? "replaceState" : "pushState";
+    history[method]({
+      page,
+      agentId: state.selectedAgentId,
+      contextAgentId: state.contextAgentId,
+      contextAgentName: state.contextAgentName,
+      contextAgentKey: state.contextAgentKey,
+    }, "", routeHash(page));
+  }
+
   refreshPage(page);
-  window.scrollTo({top:0, behavior:"smooth"});
+  window.scrollTo({top:0, behavior: options.history === "none" ? "auto" : "smooth"});
+}
+
+function navigateFromLocation() {
+  const route = parseRoute();
+  if (route.page === "agent-detail") {
+    state.selectedAgentId = route.params.get("agent") || state.selectedAgentId;
+  }
+
+  if (["runs","evaluations"].includes(route.page) && route.params.get("from") === "agent-detail") {
+    state.contextAgentId = route.params.get("agent");
+    state.contextAgentKey = route.params.get("key");
+    state.contextAgentName = null;
+    navigate(route.page, {history:"none", preserveContext:true});
+    return;
+  }
+
+  navigate(route.page, {
+    history:"none",
+    agentId: route.page === "agent-detail" ? state.selectedAgentId : undefined,
+  });
 }
 
 async function refreshPage(page) {
@@ -215,6 +299,55 @@ function renderAttention(settings) {
     '</span></div><button data-go="' + item.page + '">' + icon("arrow") + '</button></div>'
   ).join("");
   bindGo($("attentionList"));
+}
+
+async function getContextAgent() {
+  if (!state.contextAgentId) return null;
+  let agent = state.agents.find(item => item.id === state.contextAgentId);
+  if (!agent && state.selectedAgent?.id === state.contextAgentId) agent = state.selectedAgent;
+  if (!agent) {
+    try {
+      agent = await api("/api/v1/agents/" + encodeURIComponent(state.contextAgentId));
+      if (!state.agents.some(item => item.id === agent.id)) state.agents.push(agent);
+    } catch {
+      return null;
+    }
+  }
+  state.contextAgentName = agent.name;
+  state.contextAgentKey = agent.type === "generic" ? agent.slug : agent.type;
+  return agent;
+}
+
+async function updateContextReturn(page) {
+  const button = page === "runs" ? $("runsAgentReturn") : $("evaluationsAgentReturn");
+  const description = page === "runs" ? $("runsPageDescription") : $("evaluationsPageDescription");
+  if (!button || !description) return null;
+
+  if (!state.contextAgentId) {
+    button.classList.add("hidden");
+    description.textContent = page === "runs"
+      ? "Inspect execution, latency, trace, and evaluation results."
+      : "Deterministic quality checks across agent execution paths.";
+    return null;
+  }
+
+  const agent = await getContextAgent();
+  if (!agent) {
+    button.classList.add("hidden");
+    return null;
+  }
+
+  button.classList.remove("hidden");
+  button.querySelector("span").textContent = "Back to " + agent.name;
+  description.textContent = page === "runs"
+    ? "Execution history for " + agent.name + "."
+    : "Evaluation results for " + agent.name + ".";
+  return agent;
+}
+
+function returnToContextAgent() {
+  if (!state.contextAgentId) return navigate("agents");
+  navigate("agent-detail", {agentId:state.contextAgentId});
 }
 
 function agentTypeMeta(type) {
@@ -707,9 +840,21 @@ async function investigate(demo = false) {
 }
 
 async function loadRuns() {
+  const contextAgent = await updateContextReturn("runs");
+  if (contextAgent) {
+    const key = state.contextAgentKey;
+    let option = [...$("runAgentFilter").options].find(item => item.value === key);
+    if (!option) {
+      option = new Option(contextAgent.name, key);
+      $("runAgentFilter").add(option);
+    }
+    $("runAgentFilter").value = key;
+  }
+
   const agent = $("runAgentFilter").value;
   const url = "/api/v1/platform/runs?limit=200" + (agent ? "&agent=" + encodeURIComponent(agent) : "");
-  state.runs = await api(url); renderRuns();
+  state.runs = await api(url);
+  renderRuns();
 }
 function renderRuns() {
   const status = $("runStatusFilter").value, q = $("runSearch").value.trim().toLowerCase();
@@ -747,8 +892,12 @@ async function openRun(id) {
 }
 
 async function loadEvaluations() {
+  await updateContextReturn("evaluations");
   state.metrics = await api("/api/v1/platform/metrics?limit=200");
-  $("evalMetrics").innerHTML = state.metrics.length ? state.metrics.map(m =>
+  const metrics = state.contextAgentKey
+    ? state.metrics.filter(item => item.agent === state.contextAgentKey)
+    : state.metrics;
+  $("evalMetrics").innerHTML = metrics.length ? metrics.map(m =>
     '<div class="eval-card"><strong>' + esc(AGENTS[m.agent]?.name || titleCase(m.agent)) + '</strong><div class="eval-score">' + m.eval_avg_score +
     '</div><div class="progress"><span style="width:' + Math.max(0,Math.min(100,m.eval_avg_score)) + '%"></span></div><small>Pass ' +
     m.eval_pass_rate + '% · Success ' + m.success_rate + '%</small></div>'
@@ -1043,13 +1192,15 @@ $$("[data-managed-agent-tab]").forEach(button => button.onclick = () => {
 $$("[data-managed-agent-go]").forEach(button => button.onclick = () => {
   const agent = state.selectedAgent;
   if (!agent) return;
-  if (button.dataset.managedAgentGo === "runs") {
-    $("runAgentFilter").value = agent.type === "generic" ? agent.slug : agent.type;
-    navigate("runs");
-  } else {
-    navigate("evaluations");
-  }
+  const fromAgent = {
+    id:agent.id,
+    name:agent.name,
+    key:agent.type === "generic" ? agent.slug : agent.type,
+  };
+  navigate(button.dataset.managedAgentGo, {fromAgent});
 });
+$("runsAgentReturn").onclick = returnToContextAgent;
+$("evaluationsAgentReturn").onclick = returnToContextAgent;
 $("dataSource").onchange = loadSchema;
 $("dataAsk").onclick = runDataAsk;
 $("runSql").onclick = runSql;
@@ -1133,10 +1284,25 @@ document.addEventListener("keydown", e => {
   }
 });
 
+window.addEventListener("popstate", navigateFromLocation);
+
 (async function boot() {
   if (!await loadIdentity()) return;
   document.body.classList.remove("auth-pending");
   await updateApprovalCountFromApi();
-  const page = location.hash.slice(1);
-  navigate(PAGES[page] ? page : "home");
+
+  const route = parseRoute();
+  if (route.page === "agent-detail") {
+    state.selectedAgentId = route.params.get("agent") || state.selectedAgentId;
+  }
+  if (["runs","evaluations"].includes(route.page) && route.params.get("from") === "agent-detail") {
+    state.contextAgentId = route.params.get("agent");
+    state.contextAgentKey = route.params.get("key");
+  }
+
+  navigate(route.page, {
+    history:"replace",
+    agentId:state.selectedAgentId,
+    preserveContext:!!state.contextAgentId,
+  });
 })();

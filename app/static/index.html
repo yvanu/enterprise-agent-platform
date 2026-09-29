@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Enterprise Agent</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260929-2">
+  <link rel="stylesheet" href="/static/app.css?v=20260929-3">
 </head>
 <body class="auth-pending">
 <svg class="svg-sprite" aria-hidden="true">
@@ -332,7 +332,8 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
     </section>
 
     <section class="page" data-page-panel="runs">
-      <header class="page-header"><div><h1>Runs</h1><p>Inspect execution, latency, trace, and evaluation results.</p></div></header>
+      <button class="back-link context-return hidden" id="runsAgentReturn"><svg><use href="#i-back"/></svg> <span>Back to agent</span></button>
+      <header class="page-header"><div><h1>Runs</h1><p id="runsPageDescription">Inspect execution, latency, trace, and evaluation results.</p></div></header>
       <div class="toolbar runs-toolbar">
         <select id="runAgentFilter"><option value="">All agents</option><option value="data">Data Agent</option><option value="knowledge">Knowledge Agent</option><option value="ops">Ops Agent</option><option value="supervisor">Supervisor</option></select>
         <select id="runStatusFilter"><option value="">All statuses</option><option value="ok">Success</option><option value="error">Error</option></select>
@@ -343,7 +344,8 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
     </section>
 
     <section class="page" data-page-panel="evaluations">
-      <header class="page-header"><div><h1>Evaluations</h1><p>Deterministic quality checks across agent execution paths.</p></div><button class="secondary-btn" id="runRegression">Run regression</button></header>
+      <button class="back-link context-return hidden" id="evaluationsAgentReturn"><svg><use href="#i-back"/></svg> <span>Back to agent</span></button>
+      <header class="page-header"><div><h1>Evaluations</h1><p id="evaluationsPageDescription">Deterministic quality checks across agent execution paths.</p></div><button class="secondary-btn" id="runRegression">Run regression</button></header>
       <div id="evalMetrics" class="eval-grid"></div>
       <section class="content-section"><div class="section-heading"><div><h2>Regression suite</h2><p>Fixed samples with no external LLM dependency</p></div></div><div id="regressionResult" class="empty-state">Run regression to validate the core paths.</div></section>
     </section>
@@ -485,7 +487,7 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
   </div>
 </div>
 
-<script src="/static/i18n.js?v=20260929-3"></script>
-<script src="/static/app.js?v=20260929-2"></script>
+<script src="/static/i18n.js?v=20260929-4"></script>
+<script src="/static/app.js?v=20260929-3"></script>
 </body>
 </html>
