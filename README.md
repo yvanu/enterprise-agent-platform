@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/yvanu/enterprise-agent-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/yvanu/enterprise-agent-platform/actions/workflows/ci.yml)
 
-[Documentation](https://docs.agent.majhoon.site) · [Live Demo](https://agent.majhoon.site) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Demo Guide](docs/DEMO.md) · [Interview Guide](docs/INTERVIEW.md) · [Changelog](CHANGELOG.md)
+[Documentation](https://docs.agent.majhoon.site) · [Live Demo](https://agent.majhoon.site) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/roadmap.md) · [Demo Guide](docs/DEMO.md) · [Interview Guide](docs/INTERVIEW.md) · [Changelog](CHANGELOG.md)
 
 面向企业场景的多 Agent 平台。Data、Knowledge、Ops 三个业务 Agent 共用同一套 LLM Runtime、配置、Web Session / Bearer Token 身份认证、RBAC、Tool Policy、Human Approval、运行审计、确定性 Eval、Regression Suite 和 API 服务；Supervisor 只在真实跨 Agent 故障调查场景中负责只读编排。Web Console 采用资源化 Enterprise SaaS 信息架构，统一管理 Agents、Knowledge、Data Sources、Runs、Evaluations、Approvals、Integrations、Credentials 与 Policies。
 
