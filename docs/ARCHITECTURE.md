@@ -1,6 +1,6 @@
-# Architecture
+# 系统架构
 
-## System overview
+## 系统总览
 
 ```mermaid
 flowchart TB
@@ -37,7 +37,7 @@ flowchart TB
   EVAL --> METRICS[Quality Metrics / Prometheus]
 ```
 
-## Cross-agent incident investigation
+## 跨 Agent 故障调查
 
 ```mermaid
 sequenceDiagram
@@ -69,9 +69,9 @@ sequenceDiagram
   S-->>U: conclusion + findings + trace
 ```
 
-The Supervisor currently delegates sequentially. This keeps the execution model simple and deterministic for the demo. Parallel delegation is only worth adding when real latency measurements justify the extra concurrency behavior.
+当前 Supervisor 采用串行委派。这样 Demo 的执行模型更简单、确定性更强、Trace 顺序也更清楚。只有真实 P95 数据证明并行化收益足够大时，才值得引入额外并发复杂度。
 
-## High-risk write flow
+## 高风险写操作流程
 
 ```mermaid
 sequenceDiagram
@@ -92,53 +92,53 @@ sequenceDiagram
   TOOL-->>OP: result
 ```
 
-Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The model cannot create a new arbitrary shell command from an approved fixed action.
+Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。即使模型被 Prompt Injection，也不能把“已批准的固定动作”扩展成任意 Shell 命令。
 
-## Security boundaries
+## 安全边界
 
-| Boundary | Enforcement |
+| 边界 | 实现方式 |
 | --- | --- |
-| User identity | Web Session (HttpOnly Cookie) + Bearer token authentication |
-| API permissions | RBAC: user / operator / approver / admin |
-| Agent capability | Tool Policy registry |
-| SQL execution | SQL Guard + database read-only account recommendation |
-| Knowledge visibility | role-filtered document scope |
-| Risky writes | Human Approval + single-use target-bound approval |
-| Ops commands | fixed arguments / server-side allowlists |
-| Request tracing | X-Request-ID + X-Correlation-ID propagated into Agent Run |
-| API errors | shared error envelope with stable code and request context |
-| API abuse | per-process client-IP rate limit; gateway/shared limiter for multi-replica deployments |
-| Secrets | `.env` ignored, `SecretStr` for LLM key, auth tokens excluded from Settings repr, production config validation |
-| Health | liveness is process-only; readiness checks database + platform store + knowledge store |
-| Audit | Run/Trace + approval actor/requester/executor |
-| Prompt data retention | raw user question is not stored in Run history |
+| 用户身份 | Web Session（HttpOnly Cookie）+ Bearer Token |
+| API 权限 | RBAC：user / operator / approver / admin |
+| Agent 能力 | Tool Policy Registry |
+| SQL 执行 | SQL Guard + 推荐数据库只读账号 |
+| Knowledge 可见范围 | 按角色过滤文档 |
+| 高风险写操作 | Human Approval + 单次消费 + Target 绑定 |
+| Ops 命令 | 固定参数 / 服务端 Allowlist |
+| 请求追踪 | X-Request-ID + X-Correlation-ID 写入 Agent Run |
+| API 错误 | 统一 Error Envelope + 稳定错误码 + Request Context |
+| API 滥用 | 单进程按客户端 IP 限流；多副本升级为 Gateway/共享限流 |
+| Secret | `.env` gitignore、LLM Key 使用 `SecretStr`、生产配置校验 |
+| Health | Liveness 只看进程；Readiness 检查 DB / Platform Store / Knowledge Store |
+| Audit | Run/Trace + Approval requester/actor/executor |
+| Prompt 数据留存 | 默认不把原始用户问题写入 Run History |
 
-## Persistence
+## 持久化
 
-| Data | Current storage | Upgrade path |
+| 数据 | 当前存储 | 生产升级路径 |
 | --- | --- | --- |
-| Demo business data | SQLite / external SQLAlchemy database | PostgreSQL / Kingbase |
-| Knowledge chunks + embeddings | SQLite | pgvector / managed vector DB |
-| Runs / approvals | SQLite | PostgreSQL |
-| Auth identities | config token map + in-memory Web Session | OIDC / enterprise IdP + shared session store |
+| Demo 业务数据 | SQLite / 外部 SQLAlchemy 数据库 | PostgreSQL / Kingbase |
+| Knowledge Chunk + Embedding | SQLite | pgvector / 托管向量数据库 |
+| Runs / Approvals | SQLite | PostgreSQL |
+| Auth Identity | 配置 Token Map + 进程内 Web Session | OIDC / 企业 IdP + 共享 Session Store |
 
-The current SQLite choices are deliberate for a self-contained demo. The platform interfaces keep the migration path visible without introducing infrastructure before it is needed.
+当前使用 SQLite 是为了让 Demo 自包含，而不是认为 SQLite 适合所有生产场景。平台接口层保留了迁移路径，避免在没有规模证据时提前引入基础设施。
 
-## Failure model
+## 故障模型
 
-- Data Agent retries invalid/generated SQL up to `agent_max_attempts`.
-- Supervisor records a failed child finding and continues when other agents succeed.
-- Supervisor fails only when every child Agent fails.
-- Ops diagnosis treats optional Prometheus/Docker/Kubernetes failures as trace errors rather than hiding them.
-- Eval flags missing critical steps and trace errors.
-- CI runs compile, tests, dependency consistency, and vulnerability audit.
+- Data Agent 对无效/执行失败 SQL 最多重试 `agent_max_attempts` 次。
+- Supervisor 会记录失败的 Child Finding，并在其他 Agent 成功时继续综合。
+- 只有所有 Child Agent 都失败时 Supervisor 才整体失败。
+- Ops 诊断会把 Prometheus / Docker / Kubernetes 等可选依赖失败写入 Trace，而不是静默吞掉。
+- Eval 会检查关键 Step 缺失和 Trace Error。
+- CI 会执行编译、测试、依赖一致性和漏洞审计。
 
-## Scale-up path
+## 扩展路径
 
-1. Replace static bearer tokens with OIDC/JWT validation.
-2. Move platform state and knowledge metadata to PostgreSQL.
-3. Replace O(n) embedding scan with pgvector when measured corpus size/latency requires it.
-4. Add tenant/user ACL predicates in addition to role scope.
-5. Parallelize Supervisor delegation if real incident latency becomes material.
-6. Move rate limiting to API Gateway/Redis for multi-replica deployments and integrate a real Secret Manager.
-7. Add alert routing and production retention policies.
+1. 静态 Bearer Token 升级为 OIDC/JWT。
+2. Platform State 与 Knowledge Metadata 迁 PostgreSQL。
+3. 当知识库规模/P95 有真实压力时，把 O(n) Embedding Scan 替换为 pgvector。
+4. 除 Role Scope 外加入 Tenant/User ACL Predicate。
+5. 当故障调查延迟成为实际瓶颈时并行化 Supervisor。
+6. 多副本环境把 Rate Limit 迁到 API Gateway/Redis，并接入 Secret Manager。
+7. 增加告警路由和生产 Retention Policy。
