@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Enterprise Agent</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260928-4">
+  <link rel="stylesheet" href="/static/app.css?v=20260929-1">
 </head>
 <body class="auth-pending">
 <svg class="svg-sprite" aria-hidden="true">
@@ -72,6 +72,7 @@
       <button class="workspace-switcher"><span class="workspace-dot"></span><strong>Production</strong><span class="chevron">⌄</span></button>
       <button class="command-search" id="commandSearch"><svg><use href="#i-search"/></svg><span>Search agents, runs, resources…</span><kbd>⌘ K</kbd></button>
       <div class="top-actions">
+        <button class="language-switch" data-language-switch type="button" aria-label="Switch to English"><span data-lang="zh">中</span><i></i><span data-lang="en">EN</span></button>
         <button class="icon-btn" title="Help"><svg><use href="#i-help"/></svg></button>
         <button class="icon-btn" title="Notifications"><svg><use href="#i-bell"/></svg></button>
         <button class="avatar account-button" id="accountButton" aria-label="Account menu">AD</button>
@@ -88,7 +89,7 @@
 
     <section class="page active" data-page-panel="home">
       <header class="page-header home-header">
-        <div><h1>Good evening, <span id="homeUser">demo</span></h1><p>Here’s what needs your attention across the platform.</p></div>
+        <div><h1><span id="homeGreeting">Good morning,</span> <span id="homeUser">demo</span></h1><p>Here’s what needs your attention across the platform.</p></div>
       </header>
 
       <div id="attentionList" class="attention-list"></div>
@@ -388,6 +389,7 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
   </div>
 </div>
 
-<script src="/static/app.js?v=20260928-5"></script>
+<script src="/static/i18n.js?v=20260929-1"></script>
+<script src="/static/app.js?v=20260929-1"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+const uiText = text => window.EAPI18n ? EAPI18n.t(text) : text;
 
 const state = {
   page: "home",
@@ -121,6 +122,8 @@ async function loadIdentity() {
     state.identity = me;
     $("sidebarUser").textContent = me.username;
     $("sidebarRole").textContent = me.role;
+    const hour = new Date().getHours();
+    $("homeGreeting").textContent = hour < 12 ? "Good morning," : hour < 18 ? "Good afternoon," : "Good evening,";
     $("homeUser").textContent = me.username;
     const initials = me.username.slice(0, 2).toUpperCase();
     $$(".avatar").forEach(el => el.textContent = initials);
@@ -258,7 +261,7 @@ function renderAgentDirectory() {
   const q = ($("agentSearch").value || "").trim().toLowerCase();
   const keys = Object.keys(AGENTS).filter(key => {
     const a = AGENTS[key];
-    return !q || [a.name,a.kind,a.desc].some(v => v.toLowerCase().includes(q));
+    return !q || [a.name,a.kind,a.desc,uiText(a.name),uiText(a.kind),uiText(a.desc)].some(v => String(v).toLowerCase().includes(q));
   });
   $("agentCount").textContent = keys.length + " agent" + (keys.length === 1 ? "" : "s");
   $("agentDirectory").innerHTML = keys.map(key => agentRow(key, true)).join("");
@@ -811,7 +814,7 @@ function openCommandPalette() {
 function closeCommandPalette() { $("commandPalette").classList.add("hidden"); }
 function renderCommands() {
   const q = $("commandInput").value.trim().toLowerCase();
-  const items = COMMANDS.filter(x => !q || (x.label+" "+x.sub).toLowerCase().includes(q)).slice(0,10);
+  const items = COMMANDS.filter(x => !q || (x.label+" "+x.sub+" "+uiText(x.label)+" "+uiText(x.sub)).toLowerCase().includes(q)).slice(0,10);
   $("commandResults").innerHTML = items.map(x => '<button class="command-result" data-command-page="' + x.page + '">' + icon(x.icon) +
     '<div><strong>' + esc(x.label) + '</strong><span>' + esc(x.sub) + '</span></div><em>Go to</em></button>').join("") || '<div class="empty-state" style="padding:14px">No results.</div>';
   $$("[data-command-page]", $("commandResults")).forEach(b => b.onclick = () => { closeCommandPalette(); navigate(b.dataset.commandPage); });

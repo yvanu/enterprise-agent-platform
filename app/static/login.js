@@ -1,6 +1,7 @@
 const form = document.getElementById("loginForm");
 const button = document.getElementById("loginButton");
 const errorBox = document.getElementById("loginError");
+const tr = text => window.EAPI18n ? EAPI18n.external(text) : text;
 
 async function alreadySignedIn() {
   try {
@@ -13,7 +14,7 @@ form.addEventListener("submit", async event => {
   event.preventDefault();
   errorBox.textContent = "";
   button.disabled = true;
-  button.textContent = "Signing in…";
+  button.textContent = tr("Signing in…");
 
   try {
     const response = await fetch("/api/v1/auth/login", {
@@ -26,13 +27,13 @@ form.addEventListener("submit", async event => {
       }),
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data?.error?.message || data?.detail || "Sign in failed");
+    if (!response.ok) throw new Error(tr(data?.error?.message || data?.detail || "Sign in failed"));
     localStorage.removeItem("apiToken");
     location.replace("/");
   } catch (error) {
-    errorBox.textContent = error.message;
+    errorBox.textContent = tr(error.message);
     button.disabled = false;
-    button.textContent = "Sign in";
+    button.textContent = tr("Sign in");
   }
 });
 
