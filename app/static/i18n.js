@@ -494,7 +494,8 @@
 
   function translateAttribute(el, attr, lang) {
     if (el.hasAttribute("data-language-switch") && attr === "aria-label") return;
-    const suffix = attr[0].toUpperCase() + attr.slice(1);
+    const camelAttr = attr.replace(/-([a-z])/g, (_, ch) => ch.toUpperCase());
+    const suffix = camelAttr[0].toUpperCase() + camelAttr.slice(1);
     const sourceKey = "eapI18n" + suffix;
     const lastKey = "eapI18nLast" + suffix;
     const current = el.getAttribute(attr);
