@@ -137,7 +137,9 @@ The key change is that built-in agents become templates hosted by the platform r
 
 # 5. M0 — Freeze v0.1
 
-Create a stable baseline before major refactoring.
+**Status: ✅ Completed (2026-09-29)**
+
+The v0.1 baseline is frozen and accepted. No new functionality should be added to M0; active development now moves to v0.2 / M1.
 
 Recommended tag:
 
@@ -157,17 +159,30 @@ Deliverables:
 
 Acceptance:
 
-- [ ] All tests pass
-- [ ] Demo login works
-- [ ] Data / Knowledge / Ops / Supervisor run correctly
-- [ ] Approval flow works
-- [ ] Documentation site is reachable
-- [ ] Tag `v0.1.0`
-- [ ] `main` is deployable
+- [x] All tests pass (58 passed)
+- [x] Demo login works
+- [x] Data / Knowledge / Ops / Supervisor run correctly
+- [x] Approval flow works
+- [x] Documentation site is reachable
+- [x] Tag `v0.1.0`
+- [x] `main` is deployable
+
+### M0 acceptance evidence
+
+- Demo: `https://agent.majhoon.site`
+- Docs: `https://docs.agent.majhoon.site`
+- Roadmap: `https://docs.agent.majhoon.site/en/roadmap`
+- Current regression: `58 passed`
+- Release tag: `v0.1.0`
+- Supervisor offline demo returns Ops / Knowledge / Data findings and completes synthesis
+
+M0 is closed. New capabilities belong to v0.2+ milestones rather than changing the v0.1 baseline.
 
 ---
 
 # 6. M1 — Dynamic Agent Platform
+
+**Status: ▶ Next milestone**
 
 **Priority: P0**
 

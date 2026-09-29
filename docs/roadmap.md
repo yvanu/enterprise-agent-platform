@@ -221,7 +221,9 @@ Span
 
 # 5. M0：冻结当前 v0.1
 
-在开始大规模平台化重构前，先冻结当前稳定版本。
+**状态：✅ 已完成（2026-09-29）**
+
+当前 v0.1 Baseline 已完成冻结并通过验收，后续开发不再继续向 M0 追加功能，正式进入 v0.2 / M1。
 
 建议 Tag：
 
@@ -265,25 +267,41 @@ docs/
 ├── ARCHITECTURE.md
 ├── DEMO.md
 ├── INTERVIEW.md
-├── ROADMAP.md
-├── SECURITY.md
-├── AGENT_RUNTIME.md
-└── DATA_MODEL.md
+├── roadmap.md
+├── security.md
+├── agent-runtime.md
+└── data-model.md
 ```
 
 ## M0 验收
 
-- [ ] 当前测试全部通过
-- [ ] Demo 正常登录
-- [ ] Data / Knowledge / Ops / Supervisor 可运行
-- [ ] Approval 可正常创建/批准/消费
-- [ ] 文档站可访问
-- [ ] 创建 `v0.1.0` Tag
-- [ ] main 分支保持可部署状态
+- [x] 当前测试全部通过（58 passed）
+- [x] Demo 正常登录
+- [x] Data / Knowledge / Ops / Supervisor 可运行
+- [x] Approval 可正常创建/批准/消费
+- [x] 文档站可访问
+- [x] 创建 `v0.1.0` Tag
+- [x] main 分支保持可部署状态
+
+### M0 验收证据
+
+- Demo：`https://agent.majhoon.site`
+- 文档站：`https://docs.agent.majhoon.site`
+- Roadmap：`https://docs.agent.majhoon.site/roadmap`
+- 当前回归：`58 passed`
+- Release Tag：`v0.1.0`
+- 安全基线：`docs/security.md`
+- Runtime 基线：`docs/agent-runtime.md`
+- 数据模型基线：`docs/data-model.md`
+- Supervisor Offline Demo：Ops / Knowledge / Data 三个 Finding 均成功返回，并完成 Synthesis
+
+M0 正式关闭。后续新增能力必须进入 v0.2+ 对应 Milestone，不继续修改 v0.1 Baseline。
 
 ---
 
 # 6. M1：Dynamic Agent Platform
+
+**状态：▶ 下一阶段**
 
 **优先级：P0**
 
