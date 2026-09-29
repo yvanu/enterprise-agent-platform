@@ -334,7 +334,7 @@ M1 is closed. The next milestone is M2: Tool Platform.
 
 # 7. M2 — Tool Platform
 
-**Status: ▶ Next milestone**
+**Status: ✅ Completed (2026-09-29)**
 
 **Priority: P0**
 
@@ -414,16 +414,34 @@ Do not introduce a heavyweight policy engine yet. Keep the first implementation 
 
 Acceptance:
 
-- [ ] Tool Registry
-- [ ] Built-in tools registered
-- [ ] Agent tool assignment
-- [ ] Risk classification
-- [ ] Approval requirements
-- [ ] Unified policy evaluation
+- [x] Tool Registry
+- [x] Built-in tools registered
+- [x] Version-scoped Agent tool assignment
+- [x] Risk classification
+- [x] Approval requirements
+- [x] Unified policy evaluation
+- [x] Published Version assignments are immutable
+- [x] Draft Versions inherit the previous Tool set
+- [x] Dedicated built-in workspaces enforce the same Tool policy
+
+Evidence:
+
+- Added SQLAlchemy `tools` / `agent_tools` resources and Alembic migration.
+- Built-in capabilities seed into the registry.
+- Added Tool Registry and Agent Version Tool APIs.
+- Tool metadata includes input/output schema, timeout, mode, risk, and approval requirements.
+- Managed Agent runs and dedicated built-in workspaces enforce versioned assignments.
+- Supervisor delegation enters each child Agent's Tool context.
+- Agent Configuration now exposes Tool Assignment.
+- Current regression: `63 passed`.
+
+M2 is closed. The next milestone is M2.5: MCP.
 
 ---
 
 # 8. M2.5 — MCP
+
+**Status: ▶ Next milestone**
 
 **Priority: P0/P1**
 

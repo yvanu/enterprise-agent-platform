@@ -20,5 +20,6 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
 
 def initialize_agent_store() -> None:
     from app.modules.agents import orm  # noqa: F401
+    from app.modules.tools import orm as tool_orm  # noqa: F401
 
     Base.metadata.create_all(engine)

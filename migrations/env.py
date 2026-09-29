@@ -8,6 +8,7 @@ from sqlalchemy import engine_from_config, pool
 from app.core.config import get_settings
 from app.modules.agents.base import Base
 from app.modules.agents import orm  # noqa: F401
+from app.modules.tools import orm as tool_orm  # noqa: F401
 
 
 config = context.config

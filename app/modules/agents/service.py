@@ -162,7 +162,18 @@ class AgentService:
                 raise KeyError("Agent 不存在")
             if item.status == "archived":
                 raise ValueError("已归档 Agent 不能创建新 Version")
-            return version_view(repo.create_version(item, patch, actor=actor))
+            source_version = max(version.version for version in item.versions)
+            created = repo.create_version(item, patch, actor=actor)
+
+            from app.modules.tools.service import tool_service
+
+            tool_service.clone_assignments(
+                agent_id,
+                source_version,
+                created.version,
+                session=session,
+            )
+            return version_view(created)
 
     def publish(self, agent_id: str, version: int) -> AgentDetail:
         with SessionLocal() as session:

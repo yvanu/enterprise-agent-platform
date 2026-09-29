@@ -530,7 +530,7 @@ M1 正式关闭。下一阶段进入 M2：Tool Platform。
 
 # 7. M2：Tool Platform
 
-**状态：▶ 下一阶段**
+**状态：✅ 已完成（2026-09-29）**
 
 **优先级：P0**
 
@@ -721,16 +721,40 @@ MCP → 直接暴露给模型
 
 ## M2 验收
 
-- [ ] Tool Registry
-- [ ] Built-in Tool 注册
-- [ ] Agent ↔ Tool
-- [ ] Tool Policy
-- [ ] Risk Level
-- [ ] Approval Required
+- [x] Tool Registry
+- [x] Built-in Tool 注册
+- [x] Agent ↔ Tool（按 Agent Version 绑定）
+- [x] Tool Policy
+- [x] Risk Level
+- [x] Approval Required
+- [x] Published Version Tool Assignment 不可变
+- [x] Draft Version 自动继承上一版本 Tool Assignment
+- [x] 专用工作区与统一 Agent Runtime 使用同一 Tool Policy
+
+### M2 验收证据
+
+- 新增 `tools` / `agent_tools` SQLAlchemy 模型与 Alembic Migration
+- Built-in Tool 自动注册并 Seed 到对应 Built-in Agent v1
+- Tool Registry API：`GET /api/v1/tools`
+- Agent Version Tool API：`GET/PUT /api/v1/agents/{id}/versions/{version}/tools`
+- Tool Assignment 修改仅允许 Draft Version
+- Tool 记录 Input / Output Schema、Timeout、Mode、Risk、Approval Requirement
+- Data / Knowledge / Ops 专用工作区已进入对应 Built-in Published Version Tool Context
+- Supervisor 调用子 Agent 时进入子 Agent 自己的 Tool Context
+- Agent Detail Configuration 已加入 Tool Assignment UI
+- 当前自动化回归：`63 passed`
+
+M2 正式关闭。下一阶段进入 M2.5：MCP。
+
+---
+
+## M2.5 验收
+
 - [ ] MCP Server
 - [ ] MCP Tool Discovery
-- [ ] MCP Tool Execution
-- [ ] MCP Tool 经过统一 Policy
+- [ ] MCP Tool Import to Registry
+- [ ] MCP Tool Assignment
+- [ ] MCP Tool 经过统一 Policy 执行
 
 ---
 

@@ -33,6 +33,15 @@
     "Name and description belong to the Agent resource.": "名称和描述属于智能体资源本身。",
     "Description": "描述",
     "Save details": "保存信息",
+    "Tools": "工具",
+    "Tool access is versioned with the Agent configuration.": "工具权限随智能体版本一起管理。",
+    "Save tools": "保存工具配置",
+    "Loading tools…": "正在加载工具……",
+    "Changes affect this draft version only.": "修改仅影响当前草稿版本。",
+    "Published versions are read-only. Create a draft version to change tools.": "已发布版本只读；如需修改工具，请先创建新的草稿版本。",
+    "Approval required": "需要审批",
+    "No tools available.": "暂无可用工具。",
+    "Tool assignments saved": "工具配置已保存",
     "New draft version": "新草稿版本",
     "Create a new immutable configuration version from the latest version.": "基于最新版本创建新的不可变配置版本。",
     "Instructions": "指令",
@@ -479,6 +488,7 @@
       let m;
       if ((m = text.match(/^(\d+) approval requests? (?:are|is) waiting$/))) return m[1] + " 个审批请求待处理";
       if ((m = text.match(/^(\d+) agents?$/))) return m[1] + " 个智能体";
+      if ((m = text.match(/^(\d+) \/ (\d+) tools$/))) return m[1] + " / " + m[2] + " 个工具";
       if ((m = text.match(/^(.+) has a failed recent run$/))) return agentName(m[1], "zh") + " 最近一次运行失败";
       if ((m = text.match(/^Back to (.+)$/))) return "返回 " + agentName(m[1], "zh");
       if ((m = text.match(/^Execution history for (.+)\.$/))) return agentName(m[1], "zh") + " 的运行记录。";

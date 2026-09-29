@@ -17,6 +17,7 @@ from app.core.config import get_settings
 from app.platform.approvals import approval_store
 from app.platform.auth import Identity, require_roles
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
+from app.platform.policy import builtin_tool_execution_context
 from app.platform.runs import start_run
 
 
@@ -40,18 +41,21 @@ agent = OpsAgent(
 
 @router.get("/snapshot", response_model=OpsSnapshot)
 def snapshot() -> OpsSnapshot:
-    return agent.snapshot()
+    with builtin_tool_execution_context("ops"):
+        return agent.snapshot()
 
 
 @router.get("/logs", response_model=list[LogTail])
 def logs(lines: int = Query(80, ge=1, le=500)) -> list[LogTail]:
-    return agent.logs(lines)
+    with builtin_tool_execution_context("ops"):
+        return agent.logs(lines)
 
 
 @router.post("/prometheus/query", response_model=PrometheusResult)
 def prometheus(request: PrometheusRequest) -> PrometheusResult:
     try:
-        return agent.prometheus(request.query)
+        with builtin_tool_execution_context("ops"):
+            return agent.prometheus(request.query)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -59,7 +63,8 @@ def prometheus(request: PrometheusRequest) -> PrometheusResult:
 @router.get("/docker", response_model=RuntimeInventory)
 def docker() -> RuntimeInventory:
     try:
-        return agent.docker_containers()
+        with builtin_tool_execution_context("ops"):
+            return agent.docker_containers()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -67,7 +72,8 @@ def docker() -> RuntimeInventory:
 @router.get("/kubernetes", response_model=RuntimeInventory)
 def kubernetes() -> RuntimeInventory:
     try:
-        return agent.kubernetes_pods()
+        with builtin_tool_execution_context("ops"):
+            return agent.kubernetes_pods()
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -88,7 +94,8 @@ def restart_service(
             target=f"service:{service}",
             actor=identity.username,
         )
-        return agent.restart_service(service, approved=True)
+        with builtin_tool_execution_context("ops"):
+            return agent.restart_service(service, approved=True)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except PermissionError as exc:
@@ -103,7 +110,8 @@ def restart_service(
 def diagnose(request: DiagnoseRequest) -> OpsAnswer:
     run = start_run("ops")
     try:
-        answer = agent.diagnose(request.question)
+        with builtin_tool_execution_context("ops"):
+            answer = agent.diagnose(request.question)
         run.success(answer.trace)
         return answer
     except LLMNotConfiguredError as exc:

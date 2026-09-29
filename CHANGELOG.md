@@ -33,6 +33,20 @@ Dynamic Agent Platform milestone.
 
 ## Unreleased
 
+### Tool Platform
+
+- Added persistent Tool Registry and version-scoped Agent Tool assignments.
+- Built-in Data, Knowledge, and Ops capabilities now seed into the registry.
+- Tool resources include canonical key, provider/type, input/output schema, timeout, read/write mode, risk, and approval requirement.
+- Published Agent Versions keep immutable Tool assignments; new Draft Versions inherit the previous Tool set.
+- Existing Tool Policy and Approval flows now resolve policy metadata through the registry.
+- Managed Agent runs enforce Tool assignments at execution time.
+- Built-in dedicated workspaces use the same published-version Tool context, preventing UI/API bypass.
+- Supervisor delegation switches into each child Agent's Tool context.
+- Added Tool Registry and Agent Version Tool APIs plus Tool configuration UI.
+- Added Alembic migration `20260929_0002_tool_platform`.
+- Expanded automated coverage to 63 tests.
+
 - Added Web/API one-click isolated incident demo backed by the actual Data, Knowledge, Ops, and Supervisor code paths.
 - Offline demo now records a Supervisor Run/Trace while keeping temporary demo data isolated.
 - Added per-request Request ID / Correlation ID propagation into Agent Run records.

@@ -10,6 +10,7 @@
 | Data Agent datasource | SQLAlchemy URL |
 | Knowledge chunks / embeddings | SQLite |
 | Agent Definition / Version | PostgreSQL in Compose; SQLite fallback for lightweight demo |
+| Tool Registry / Agent Tool Assignment | same Agent Platform Store |
 | Runs | SQLite legacy store |
 | Approvals | SQLite legacy store |
 | Web sessions | process memory |
@@ -131,21 +132,46 @@ admin
 
 Web session state is not persistent in v0.1.
 
-## 7. Tool Policy
+## 7. Tool Platform
 
-Tool Policy is currently code/configuration driven rather than persisted as a general Tool Registry.
+Tool Policy metadata is now persisted through first-class Tool resources.
 
-Policy fields conceptually include:
+`tools`:
 
 ```text
-agent
+id
+key
 name
-risk
+display_name
+description
+namespace
+provider
+type
+input_schema
+output_schema
+timeout_seconds
 mode
+risk
 approval_required
+enabled
+created_at
+updated_at
 ```
 
-v0.2 will introduce first-class Tool resources and Agent ↔ Tool assignment.
+`agent_tools` binds tools to an immutable Agent Version:
+
+```text
+id
+agent_version_id
+tool_id
+enabled
+config
+created_at
+```
+
+The unique key is `agent_version_id + tool_id`.
+
+Published Version assignments are read-only. Creating a new Draft Version copies the prior Tool set so tool changes remain versioned together with instructions/model settings.
 
 ## 8. v0.2 implemented Agent model
 
@@ -200,7 +226,7 @@ published_at
 
 SQLAlchemy defines the runtime model and Alembic owns schema migration. Compose points `PLATFORM_DATABASE_URL` at PostgreSQL. The lightweight standalone demo may use SQLite.
 
-The next milestone introduces Tool Registry and Agent ↔ Tool resources; Data Source promotion remains a later resource-model step rather than being pulled into M1.
+M2 has now added Tool Registry and Agent Version Tool Assignment. MCP discovery in M2.5 will import discovered tools into these same tables rather than creating a parallel capability model. Data Source promotion remains a later resource-model step.
 
 ## 9. Long-term target
 

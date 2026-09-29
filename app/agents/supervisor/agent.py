@@ -6,6 +6,7 @@ from app.agents.ops.agent import OpsAgent
 from app.agents.supervisor.models import AgentFinding, IncidentAnswer
 from app.platform.llm import OpenAICompatibleLLM
 from app.platform.models import TraceStep
+from app.platform.policy import builtin_tool_execution_context
 
 
 class SupervisorAgent:
@@ -25,10 +26,14 @@ class SupervisorAgent:
         findings: list[AgentFinding] = []
         trace: list[TraceStep] = []
 
+        def delegated(agent_type: str, call):
+            with builtin_tool_execution_context(agent_type):
+                return call()
+
         delegates = [
-            ("ops", lambda: self.ops_agent.diagnose(question)),
-            ("knowledge", lambda: self.knowledge_agent.ask(question, role=role)),
-            ("data", lambda: self.data_agent.ask(question)),
+            ("ops", lambda: delegated("ops", lambda: self.ops_agent.diagnose(question))),
+            ("knowledge", lambda: delegated("knowledge", lambda: self.knowledge_agent.ask(question, role=role))),
+            ("data", lambda: delegated("data", lambda: self.data_agent.ask(question))),
         ]
         for name, call in delegates:
             try:

@@ -8,3 +8,5 @@ data/*.db
 node_modules/
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+*.egg-info/

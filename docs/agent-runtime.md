@@ -1,6 +1,6 @@
 # Agent Runtime Baseline
 
-> v0.1 runtime baseline. This document records the current synchronous execution model and the target direction for v0.3.
+> v0.2 runtime baseline. This document records the current synchronous, versioned Agent/Tool execution model and the target direction for v0.3.
 
 ## 1. Current runtime
 
@@ -33,6 +33,8 @@ Built-in runtime entry points:
 
 Supervisor delegates to Ops, Knowledge and Data in a fixed finite sequence and then synthesizes the findings.
 
+Managed execution establishes a Tool Context for the exact Agent Version. Data / Knowledge / Ops dedicated workspaces resolve the current Built-in Published Version into the same Tool Context. Supervisor switches context for each delegated child Agent.
+
 ## 3. Current Run model
 
 A Run currently records:
@@ -46,6 +48,8 @@ trace
 error_type
 request_id
 correlation_id
+agent_id
+agent_version
 created_at
 ```
 

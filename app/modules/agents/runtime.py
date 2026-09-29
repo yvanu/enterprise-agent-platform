@@ -10,7 +10,8 @@ from app.modules.agents.models import AgentDetail, AgentRunRequest, AgentRunResp
 from app.platform.auth import Identity
 from app.platform.llm import OpenAICompatibleLLM
 from app.platform.models import TraceStep
-from app.platform.runs import start_run
+from app.platform.policy import tool_execution_context
+from app.platform.runs import RunTimer, start_run
 
 
 def _published_version(agent: AgentDetail) -> AgentVersionView:
@@ -31,86 +32,103 @@ class AgentRuntime:
             agent_version=version.version,
         )
         try:
-            if agent.type == "data":
-                answer = DataAgent(get_database(request.source), shared_llm).ask(request.input)
-                run_id = run.success(answer.trace)
-                return AgentRunResponse(
-                    run_id=run_id,
-                    agent_id=agent.id,
-                    agent_version=version.version,
-                    answer=answer.answer,
-                    trace=[item.model_dump() for item in answer.trace],
-                    raw=answer.model_dump(mode="json"),
-                )
+            with tool_execution_context(agent.id, version.version):
+                return self._execute(agent, version, request, identity, run)
+        except Exception as exc:
+            run.error(exc)
+            raise
 
-            if agent.type == "knowledge":
-                answer = knowledge_agent.ask(request.input, role=identity.role)
-                run_id = run.success(answer.trace)
-                return AgentRunResponse(
-                    run_id=run_id,
-                    agent_id=agent.id,
-                    agent_version=version.version,
-                    answer=answer.answer,
-                    trace=[item.model_dump() for item in answer.trace],
-                    raw=answer.model_dump(mode="json"),
-                )
-
-            if agent.type == "ops":
-                if identity.role not in {"operator", "admin"}:
-                    raise PermissionError("Ops Agent 需要 operator/admin 权限")
-                answer = ops_agent.diagnose(request.input)
-                run_id = run.success(answer.trace)
-                return AgentRunResponse(
-                    run_id=run_id,
-                    agent_id=agent.id,
-                    agent_version=version.version,
-                    answer=answer.answer,
-                    trace=[item.model_dump() for item in answer.trace],
-                    raw=answer.model_dump(mode="json"),
-                )
-
-            if agent.type == "supervisor":
-                if identity.role not in {"operator", "admin"}:
-                    raise PermissionError("Supervisor 需要 operator/admin 权限")
-                supervisor = SupervisorAgent(
-                    DataAgent(get_database(request.source), shared_llm),
-                    knowledge_agent,
-                    ops_agent,
-                    shared_llm,
-                )
-                answer = supervisor.investigate(request.input, role=identity.role)
-                run_id = run.success(answer.trace)
-                return AgentRunResponse(
-                    run_id=run_id,
-                    agent_id=agent.id,
-                    agent_version=version.version,
-                    answer=answer.answer,
-                    trace=[item.model_dump() for item in answer.trace],
-                    raw=answer.model_dump(mode="json"),
-                )
-
-            llm = OpenAICompatibleLLM(get_settings())
-            trace = [TraceStep(kind="llm", name="agent_response", detail=f"agent_version={version.version}")]
-            messages = []
-            if version.instructions.strip():
-                messages.append({"role": "system", "content": version.instructions.strip()})
-            messages.append({"role": "user", "content": request.input})
-            answer = llm.chat(
-                messages,
-                model=version.model or None,
-                temperature=version.temperature,
-            )
-            run_id = run.success(trace)
+    def _execute(
+        self,
+        agent: AgentDetail,
+        version: AgentVersionView,
+        request: AgentRunRequest,
+        identity: Identity,
+        run: RunTimer,
+    ) -> AgentRunResponse:
+        if agent.type == "data":
+            answer = DataAgent(get_database(request.source), shared_llm).ask(request.input)
+            run_id = run.success(answer.trace)
             return AgentRunResponse(
                 run_id=run_id,
                 agent_id=agent.id,
                 agent_version=version.version,
-                answer=answer,
-                trace=[item.model_dump() for item in trace],
+                answer=answer.answer,
+                trace=[item.model_dump() for item in answer.trace],
+                raw=answer.model_dump(mode="json"),
             )
-        except Exception as exc:
-            run.error(exc)
-            raise
+
+        if agent.type == "knowledge":
+            answer = knowledge_agent.ask(request.input, role=identity.role)
+            run_id = run.success(answer.trace)
+            return AgentRunResponse(
+                run_id=run_id,
+                agent_id=agent.id,
+                agent_version=version.version,
+                answer=answer.answer,
+                trace=[item.model_dump() for item in answer.trace],
+                raw=answer.model_dump(mode="json"),
+            )
+
+        if agent.type == "ops":
+            if identity.role not in {"operator", "admin"}:
+                raise PermissionError("Ops Agent 需要 operator/admin 权限")
+            answer = ops_agent.diagnose(request.input)
+            run_id = run.success(answer.trace)
+            return AgentRunResponse(
+                run_id=run_id,
+                agent_id=agent.id,
+                agent_version=version.version,
+                answer=answer.answer,
+                trace=[item.model_dump() for item in answer.trace],
+                raw=answer.model_dump(mode="json"),
+            )
+
+        if agent.type == "supervisor":
+            if identity.role not in {"operator", "admin"}:
+                raise PermissionError("Supervisor 需要 operator/admin 权限")
+            supervisor = SupervisorAgent(
+                DataAgent(get_database(request.source), shared_llm),
+                knowledge_agent,
+                ops_agent,
+                shared_llm,
+            )
+            answer = supervisor.investigate(request.input, role=identity.role)
+            run_id = run.success(answer.trace)
+            return AgentRunResponse(
+                run_id=run_id,
+                agent_id=agent.id,
+                agent_version=version.version,
+                answer=answer.answer,
+                trace=[item.model_dump() for item in answer.trace],
+                raw=answer.model_dump(mode="json"),
+            )
+
+        llm = OpenAICompatibleLLM(get_settings())
+        trace = [
+            TraceStep(
+                kind="llm",
+                name="agent_response",
+                detail=f"agent_version={version.version}",
+            )
+        ]
+        messages = []
+        if version.instructions.strip():
+            messages.append({"role": "system", "content": version.instructions.strip()})
+        messages.append({"role": "user", "content": request.input})
+        answer = llm.chat(
+            messages,
+            model=version.model or None,
+            temperature=version.temperature,
+        )
+        run_id = run.success(trace)
+        return AgentRunResponse(
+            run_id=run_id,
+            agent_id=agent.id,
+            agent_version=version.version,
+            answer=answer,
+            trace=[item.model_dump() for item in trace],
+        )
 
 
 agent_runtime = AgentRuntime()

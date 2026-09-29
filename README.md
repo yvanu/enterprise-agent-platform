@@ -23,6 +23,20 @@ Agent 已从代码中的固定对象升级为平台一等资源。当前支持�
 
 当前仍保留 Runs / Approvals 的 v0.1 SQLite Store，等 v0.3 Async Runtime 时一起迁移，避免在 M1 提前耦合未来的 Queue / Worker / Run State Machine。
 
+### M2 Tool Platform
+
+Tool 已从静态 Policy 列表升级成平台资源，并与 Agent Version 绑定：
+
+- `tools`：统一保存 Tool Key、Provider、Type、Input/Output Schema、Timeout、Read/Write Mode、Risk、Approval Requirement
+- `agent_tools`：按 Agent Version 保存 Tool Assignment，Published Version 的 Tool 集合只读
+- 新建 Draft Version 会自动继承上一版本 Tool Assignment
+- Data / Knowledge / Ops 内置能力自动注册到 Tool Registry
+- 专用工作区与 `/api/v1/agents/{id}/run` 走同一套 Tool Assignment 校验
+- Supervisor 委派子 Agent 时切换到各子 Agent 的 Tool Context，不绕过能力边界
+- Policies 页面继续复用原 API，但数据源已经切换为 Tool Registry
+
+MCP Server / Tool Discovery 保留到 M2.5，届时发现出来的 MCP Tool 直接进入同一 Registry，而不是绕过 Policy 暴露给模型。当前 Generic Custom Agent 已能版本化保存 Tool Assignment，但通用 Function-Calling / Tool Dispatch 还未开启；M2 先把能力边界、版本和治理模型做正确，后续 Universal Runtime 再消费这些 Assignment。
+
 ## 业务 Agent 与 Supervisor
 
 ### Data Agent
@@ -80,7 +94,8 @@ app/
 │   ├── ops/
 │   └── supervisor/     # 跨 Agent 故障调查编排
 ├── modules/
-│   └── agents/         # Agent Definition / Version / Repository / Runtime Adapter
+│   ├── agents/         # Agent Definition / Version / Repository / Runtime Adapter
+│   └── tools/          # Tool Registry / Versioned Agent Tool Assignment
 ├── platform/
 │   ├── llm.py          # Chat + Embedding，共享 Runtime
 │   ├── policy.py       # Tool 风险与权限清单
@@ -91,6 +106,7 @@ app/
 │   └── regression.py   # 固定业务样本回归测试
 ├── api/
 │   ├── agents.py       # Dynamic Agent CRUD / Version / Publish / Run
+│   ├── tools.py        # Tool Registry / Agent Version Tool Assignment
 │   ├── data.py
 │   ├── knowledge.py
 │   └── ops.py
@@ -261,6 +277,12 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 - `POST /api/v1/agents/{id}/archive`：归档 Custom Agent
 - `POST /api/v1/agents/{id}/run`：执行当前 Published Version
 
+### Tools
+- `GET /api/v1/tools`：Tool Registry，可按 namespace 过滤
+- `GET /api/v1/tools/{tool_id}`：Tool Resource Detail
+- `GET /api/v1/agents/{id}/versions/{version}/tools`：查看指定 Agent Version 的 Tool Assignment
+- `PUT /api/v1/agents/{id}/versions/{version}/tools`：替换 Draft Version 的 Tool Assignment
+
 ### Platform
 - `GET /api/v1/platform/tools`：统一 Tool Policy 清单
 - `GET /api/v1/platform/runs`：Agent 运行记录，可按 Agent 过滤
@@ -304,4 +326,4 @@ OPS_ALLOWED_SERVICES=nginx,my-api
 
 模型不能直接执行任意 SQL。Data Agent 查询必须经过 SQL 安全网关；生产数据库仍应使用独立只读账号。
 
-平台维护并强制执行统一 Tool Policy，校验所属 Agent、风险等级、读写模式和审批状态；未注册 Tool、模式不匹配或待审批 Tool 会被拒绝。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、P50/P95、错误类型、平均 Eval 分和 Eval 通过率，并提供 Prometheus 文本格式出口。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 持久化 Agent 类型、状态、耗时、Trace、异常类型、Request ID 和 Correlation ID，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先由 `operator/admin` 创建审批、再由 `approver/admin` 通过认证身份批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除；请求人、审批人、执行人都会写入审批审计记录。Ops Agent 除只读系统信息、服务端白名单日志、Prometheus、固定 `docker ps` / `kubectl get pods` 外，现已支持 `OPS_ALLOWED_SERVICES` 白名单内的 `systemctl restart <service>`。该 Tool 标记为 `high/write/approval_required`，审批 ID 会绑定 `service:<name>` 并单次消费；仍不接受任意 Shell。未来配置变更、Kubernetes rollout/scale 等动作继续复用同一审批机制。
+平台维护并强制执行统一 Tool Registry + Versioned Agent Tool Assignment + Tool Policy，校验 Agent Version 是否拥有该能力、风险等级、读写模式和审批状态；未注册 Tool、未分配 Tool、模式不匹配或待审批 Tool 会被拒绝。Published Version 的 Tool Assignment 不允许原地修改。平台指标会基于最近的 Run 聚合各 Agent 的运行次数、成功率、平均耗时、P50/P95、错误类型、平均 Eval 分和 Eval 通过率，并提供 Prometheus 文本格式出口。Run 详情可直接查看 Trace 与 Eval 检查项，失败 Run 会显示异常类型，便于定位失败阶段。Agent Run 持久化 Agent 类型、状态、耗时、Trace、异常类型、Request ID 和 Correlation ID，不持久化用户问题原文。Eval 直接检查 Run 状态、Trace 错误和关键步骤是否齐全，不额外调用 LLM，结果可重复、成本为零。Regression Suite 使用临时 SQLite 数据库和确定性 Fake LLM，验证 Data Agent 的分类聚合与失败任务统计，以及 Knowledge Agent 的雷达/海洋资料 Top-1 检索，不触碰生产数据。Knowledge Agent 的 `document_delete` 是当前首个真实 Human-in-the-loop 写操作：Tool Policy 标记为 `medium/write/approval_required`，必须先由 `operator/admin` 创建审批、再由 `approver/admin` 通过认证身份批准，并以匹配 Agent/Tool/Target 的审批 ID 单次消费后才能删除；请求人、审批人、执行人都会写入审批审计记录。Ops Agent 除只读系统信息、服务端白名单日志、Prometheus、固定 `docker ps` / `kubectl get pods` 外，现已支持 `OPS_ALLOWED_SERVICES` 白名单内的 `systemctl restart <service>`。该 Tool 标记为 `high/write/approval_required`，审批 ID 会绑定 `service:<name>` 并单次消费；仍不接受任意 Shell。未来配置变更、Kubernetes rollout/scale 等动作继续复用同一审批机制。

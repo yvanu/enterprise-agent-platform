@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.platform.approvals import approval_store
 from app.platform.auth import Identity, ROLES, current_identity, require_roles
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
+from app.platform.policy import builtin_tool_execution_context
 from app.platform.runs import start_run
 
 
@@ -35,7 +36,8 @@ def _form_roles(value: str) -> list[str] | None:
 def documents(
     identity: Annotated[Identity, Depends(current_identity)],
 ) -> list[dict]:
-    return agent.documents(role=identity.role)
+    with builtin_tool_execution_context("knowledge"):
+        return agent.documents(role=identity.role)
 
 
 @router.delete("/documents/{document_id}")
@@ -44,8 +46,9 @@ def delete_document(
     approval_id: int,
     identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
 ) -> dict[str, int]:
-    if not any(item["document_id"] == document_id for item in agent.documents()):
-        raise HTTPException(status_code=404, detail="文档不存在")
+    with builtin_tool_execution_context("knowledge"):
+        if not any(item["document_id"] == document_id for item in agent.documents()):
+            raise HTTPException(status_code=404, detail="文档不存在")
 
     try:
         approval_store.consume(
@@ -55,8 +58,9 @@ def delete_document(
             target=f"document:{document_id}",
             actor=identity.username,
         )
-        if not agent.delete_document(document_id, approved=True):
-            raise HTTPException(status_code=404, detail="文档不存在")
+        with builtin_tool_execution_context("knowledge"):
+            if not agent.delete_document(document_id, approved=True):
+                raise HTTPException(status_code=404, detail="文档不存在")
         return {"deleted_document_id": document_id}
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -70,14 +74,15 @@ def add_document(
     identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
 ) -> dict[str, int]:
     try:
-        return {
-            "document_id": agent.add_document(
-                request.title,
-                request.content,
-                tags=request.tags,
-                allowed_roles=list(request.allowed_roles),
-            )
-        }
+        with builtin_tool_execution_context("knowledge"):
+            return {
+                "document_id": agent.add_document(
+                    request.title,
+                    request.content,
+                    tags=request.tags,
+                    allowed_roles=list(request.allowed_roles),
+                )
+            }
     except LLMNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
 
@@ -95,12 +100,13 @@ async def upload_document(
 
     try:
         content = extract_text(file.filename or "document.txt", data)
-        document_id = agent.add_document(
-            file.filename or "未命名文档",
-            content,
-            tags=[item.strip() for item in tags.split(",") if item.strip()],
-            allowed_roles=_form_roles(allowed_roles),
-        )
+        with builtin_tool_execution_context("knowledge"):
+            document_id = agent.add_document(
+                file.filename or "未命名文档",
+                content,
+                tags=[item.strip() for item in tags.split(",") if item.strip()],
+                allowed_roles=_form_roles(allowed_roles),
+            )
         return {"document_id": document_id, "filename": file.filename or "未命名文档"}
     except LLMNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -115,13 +121,14 @@ def update_document(
     identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
 ) -> dict[str, int]:
     try:
-        version = agent.update_document(
-            document_id,
-            request.title,
-            request.content,
-            tags=request.tags,
-            allowed_roles=list(request.allowed_roles),
-        )
+        with builtin_tool_execution_context("knowledge"):
+            version = agent.update_document(
+                document_id,
+                request.title,
+                request.content,
+                tags=request.tags,
+                allowed_roles=list(request.allowed_roles),
+            )
         if version is None:
             raise HTTPException(status_code=404, detail="文档不存在")
         return {"document_id": document_id, "version": version}
@@ -136,7 +143,8 @@ def ask(
 ) -> KnowledgeAnswer:
     run = start_run("knowledge")
     try:
-        answer = agent.ask(request.question, role=identity.role)
+        with builtin_tool_execution_context("knowledge"):
+            answer = agent.ask(request.question, role=identity.role)
         run.success(answer.trace)
         return answer
     except LLMNotConfiguredError as exc:

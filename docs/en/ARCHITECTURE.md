@@ -65,9 +65,52 @@ Published versions are immutable. Editing configuration creates a new Draft Vers
 
 Every Run records `agent_id + agent_version` so execution remains attributable to the exact configuration used.
 
-Data, Knowledge, Ops and Supervisor are seeded as Built-in Agent Definitions. Generic Custom Agents execute through the shared Runtime Adapter. Tool assignments become first-class resources in the next Tool Platform milestone.
+Data, Knowledge, Ops and Supervisor are seeded as Built-in Agent Definitions. Generic Custom Agents execute through the shared Runtime Adapter. Tools are first-class resources and assignments are scoped to Agent Versions.
 
 Agent Definition / Version use SQLAlchemy and Alembic. Docker Compose stores them in PostgreSQL; a lightweight SQLite fallback remains available for the standalone demo.
+
+## Tool Platform
+
+M2 promotes tools from a static policy list into first-class platform resources:
+
+```text
+Tool Registry
+├─ key
+├─ provider / type
+├─ input_schema / output_schema
+├─ timeout
+├─ read / write
+├─ risk
+└─ approval_required
+        │
+        ▼
+Agent Version
+        │
+        ▼
+agent_tools
+```
+
+Assignments belong to an **Agent Version**, preserving immutable capability boundaries for published versions. New Draft Versions inherit the previous Tool set and can then be edited.
+
+Execution follows:
+
+```text
+Agent Version
+    ↓
+Tool Request
+    ↓
+Registry
+    ↓
+Version Assignment
+    ↓
+Mode / Risk / Approval Policy
+    ↓
+Execution
+```
+
+Dedicated Data / Knowledge / Ops workspaces and the managed Agent Runtime share the same published-version Tool context. Supervisor delegation switches into each child Agent's context instead of bypassing child capability boundaries.
+
+MCP is intentionally deferred to M2.5. Discovered MCP tools must enter the same registry before assignment and policy evaluation.
 
 ## Cross-agent incident investigation
 
@@ -152,6 +195,7 @@ Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The 
 | Demo business data | SQLite / external SQLAlchemy database | PostgreSQL / Kingbase |
 | Knowledge chunks + embeddings | SQLite | pgvector / managed vector DB |
 | Agent Definition / Version | PostgreSQL (Compose) / SQLite (lightweight demo) | PostgreSQL |
+| Tool Registry / Agent Tool Assignment | same Agent Platform Store | PostgreSQL |
 | Runs / approvals | SQLite compatibility store | PostgreSQL with Async Runtime |
 | Auth identities | config token map + in-memory Web Session | OIDC / enterprise IdP + shared session store |
 

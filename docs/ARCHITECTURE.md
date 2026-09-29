@@ -81,9 +81,65 @@ Publish / Roll back
 
 Published Version 不允许原地修改。所有 Run 会记录 `agent_id + agent_version`，从而可以追溯一次执行到底使用了哪一版配置。
 
-Data / Knowledge / Ops / Supervisor 目前作为 Built-in Agent Definition 预置到同一套 Store；Custom Agent 通过统一 Runtime Adapter 执行 Published Version。Tool Registry 会在下一阶段把当前 Runtime Adapter 中的领域 Tool 绑定进一步资源化。
+Data / Knowledge / Ops / Supervisor 目前作为 Built-in Agent Definition 预置到同一套 Store；Custom Agent 通过统一 Runtime Adapter 执行 Published Version。Tool 已在 M2 中资源化，并按 Agent Version 绑定。
 
 Agent Definition / Version 使用 SQLAlchemy + Alembic。Compose 环境下通过 PostgreSQL 保存；单进程演示环境仍允许 SQLite，以保持本地启动成本低。
+
+## Tool Platform
+
+M2 将 Tool 从静态代码清单升级成一等平台资源：
+
+```text
+Tool Registry
+├─ key
+├─ provider / type
+├─ input_schema / output_schema
+├─ timeout
+├─ read / write
+├─ risk
+└─ approval_required
+        │
+        ▼
+Agent Version
+        │
+        ▼
+agent_tools
+```
+
+Tool Assignment 绑定 **Agent Version** 而不是 Agent 本身。这样 Published Version 的能力边界不会因为后续配置修改而漂移：
+
+```text
+Agent v1 (published)
+  ├─ data.schema
+  └─ data.readonly_sql
+
+Agent v2 (draft)
+  ├─ data.schema
+  ├─ data.readonly_sql
+  └─ data.report
+```
+
+新建 Draft Version 时会复制上一版本 Tool Assignment；Published Version 不允许直接修改 Tool。
+
+执行路径：
+
+```text
+Agent Version
+    ↓
+Tool Request
+    ↓
+Registry
+    ↓
+Version Assignment
+    ↓
+Mode / Risk / Approval Policy
+    ↓
+Execution
+```
+
+Data / Knowledge / Ops 的专用工作区与统一 Agent Runtime 使用同一套 Published Version Tool Context。Supervisor 委派到子 Agent 时，会切换到对应子 Agent 的 Tool Context，因此 Supervisor 本身不能借编排绕过子 Agent 的能力边界。
+
+MCP 在 M2.5 接入时只负责 Tool Discovery / Invocation Adapter；发现出的 Tool 必须先进入同一个 Registry，再经过 Assignment / Policy / Approval。
 
 ## 跨 Agent 故障调查
 
@@ -148,7 +204,7 @@ Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。�
 | --- | --- |
 | 用户身份 | Web Session（HttpOnly Cookie）+ Bearer Token |
 | API 权限 | RBAC：user / operator / approver / admin |
-| Agent 能力 | Tool Policy Registry |
+| Agent 能力 | Tool Registry + Versioned Agent Tool Assignment + Tool Policy |
 | SQL 执行 | SQL Guard + 推荐数据库只读账号 |
 | Knowledge 可见范围 | 按角色过滤文档 |
 | 高风险写操作 | Human Approval + 单次消费 + Target 绑定 |
@@ -168,6 +224,7 @@ Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。�
 | Demo 业务数据 | SQLite / 外部 SQLAlchemy 数据库 | PostgreSQL / Kingbase |
 | Knowledge Chunk + Embedding | SQLite | pgvector / 托管向量数据库 |
 | Agent Definition / Version | PostgreSQL（Compose）/ SQLite（轻量 Demo） | PostgreSQL |
+| Tool Registry / Agent Tool Assignment | 同 Agent Platform Store | PostgreSQL |
 | Runs / Approvals | SQLite（v0.1 兼容） | v0.3 Async Runtime 时迁 PostgreSQL |
 | Auth Identity | 配置 Token Map + 进程内 Web Session | OIDC / 企业 IdP + 共享 Session Store |
 

@@ -8,6 +8,7 @@ const state = {
   metrics: [],
   approvals: [],
   policies: [],
+  tools: [],
   settings: null,
   identity: null,
   lastReport: "",
@@ -460,6 +461,65 @@ async function loadManagedAgentDetail() {
     $("managedAgentTimeout").value = latest.timeout_seconds ?? 60;
   }
   renderManagedAgentVersions(agent);
+  await loadManagedAgentTools(agent);
+}
+
+async function loadManagedAgentTools(agent) {
+  const latest = agent.versions[0];
+  if (!latest) {
+    $("managedAgentTools").innerHTML = '<div class="empty-state">No versions.</div>';
+    $("saveManagedAgentTools").classList.add("hidden");
+    return;
+  }
+
+  try {
+    const [tools, assignments] = await Promise.all([
+      api("/api/v1/tools?enabled_only=true"),
+      api("/api/v1/agents/" + encodeURIComponent(agent.id) + "/versions/" + latest.version + "/tools"),
+    ]);
+    state.tools = tools;
+    const assigned = new Set(assignments.map(item => item.tool.id));
+    const editable = latest.status === "draft" && agent.status !== "archived" && ["operator","admin"].includes(state.identity?.role);
+
+    $("managedAgentToolVersion").textContent = "v" + latest.version;
+    $("managedAgentToolState").textContent = titleCase(latest.status);
+    $("managedAgentToolCount").textContent = assigned.size + " / " + tools.length + " tools";
+    $("managedAgentToolHint").textContent = editable
+      ? "Changes affect this draft version only."
+      : "Published versions are read-only. Create a draft version to change tools.";
+    $("saveManagedAgentTools").classList.toggle("hidden", !editable);
+
+    $("managedAgentTools").innerHTML = tools.length ? tools.map(tool => {
+      const riskClass = tool.risk === "high" ? "error" : tool.risk === "medium" ? "warning" : "healthy";
+      return '<label class="tool-assignment-row"><input type="checkbox" data-tool-assignment="' + esc(tool.id) + '" ' +
+        (assigned.has(tool.id) ? "checked " : "") + (editable ? "" : "disabled ") + 'aria-label="Assign ' + esc(tool.display_name) + '">' +
+        '<div class="tool-assignment-main"><strong>' + esc(tool.display_name) + '</strong><p>' + esc(tool.key) + ' · ' + esc(tool.description) + '</p></div>' +
+        '<div class="tool-assignment-meta"><span class="status-chip neutral">' + esc(titleCase(tool.mode)) + '</span>' +
+        '<span class="status-chip ' + riskClass + '">' + esc(titleCase(tool.risk)) + '</span>' +
+        (tool.approval_required ? '<span class="status-chip warning">Approval required</span>' : '') + '</div></label>';
+    }).join("") : '<div class="empty-state">No tools available.</div>';
+  } catch (error) {
+    $("managedAgentTools").innerHTML = '<div class="empty-state">' + esc(error.message) + '</div>';
+    $("managedAgentToolHint").textContent = "";
+    $("saveManagedAgentTools").classList.add("hidden");
+  }
+}
+
+async function saveManagedAgentTools() {
+  const agent = state.selectedAgent;
+  const latest = agent?.versions?.[0];
+  if (!agent || !latest || latest.status !== "draft") return;
+  const toolIds = $$('[data-tool-assignment]:checked', $("managedAgentTools")).map(item => item.dataset.toolAssignment);
+  $("saveManagedAgentTools").disabled = true;
+  try {
+    await put("/api/v1/agents/" + encodeURIComponent(agent.id) + "/versions/" + latest.version + "/tools", {tool_ids:toolIds});
+    toast("Tool assignments saved");
+    await loadManagedAgentTools(agent);
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    $("saveManagedAgentTools").disabled = false;
+  }
 }
 
 function renderManagedAgentVersions(agent) {
@@ -1178,6 +1238,7 @@ $("agentSearch").oninput = renderAgentDirectory;
 $("newAgentButton").onclick = () => { resetAgentModal(); openModal("agentModal"); };
 $("createAgentButton").onclick = createAgent;
 $("saveManagedAgentDetails").onclick = saveManagedAgentDetails;
+$("saveManagedAgentTools").onclick = saveManagedAgentTools;
 $("createManagedAgentVersion").onclick = createManagedAgentVersion;
 $("runManagedAgent").onclick = runManagedAgent;
 $("archiveManagedAgent").onclick = archiveManagedAgent;

@@ -1,6 +1,6 @@
 # Security Baseline
 
-> v0.1 security baseline. This document records what the platform currently enforces and what remains a production upgrade item.
+> v0.2 security baseline. This document records what the platform currently enforces and what remains a production upgrade item.
 
 ## 1. Security model
 
@@ -13,9 +13,9 @@ Identity
    ↓
 RBAC
    ↓
-Agent-owned Tool
+Agent Version Tool Assignment
    ↓
-Tool Policy
+Tool Registry / Policy
    ↓
 Human Approval (when required)
    ↓
@@ -59,13 +59,16 @@ Approval actors are derived from the authenticated identity.
 
 ## 4. Tool Policy
 
-Tool Policy describes:
+Tool Registry / Policy describes:
 
-- owning Agent
-- tool name
+- canonical Tool key and namespace
+- provider and type
+- input/output schema and timeout
 - read/write mode
 - risk
 - whether approval is required
+
+Tool access is assigned to an Agent Version. Published Version assignments are immutable; Draft Versions inherit the previous assignment set and may be changed before publishing.
 
 RBAC and Tool Policy are intentionally separate:
 

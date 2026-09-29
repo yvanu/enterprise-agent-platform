@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Enterprise Agent</title>
-  <link rel="stylesheet" href="/static/app.css?v=20260929-3">
+  <link rel="stylesheet" href="/static/app.css?v=20260929-4">
 </head>
 <body class="auth-pending">
 <svg class="svg-sprite" aria-hidden="true">
@@ -190,6 +190,15 @@
             <label>Name<input id="managedAgentEditName"></label>
             <label>Description<textarea id="managedAgentEditDescription"></textarea></label>
             <button class="secondary-btn" id="saveManagedAgentDetails">Save details</button>
+          </div>
+        </div>
+        <div class="settings-block">
+          <div><h2>Tools</h2><p>Tool access is versioned with the Agent configuration.</p></div>
+          <div class="settings-fields single">
+            <div class="tool-assignment-head"><div><strong id="managedAgentToolVersion">—</strong><span id="managedAgentToolState"></span></div><span id="managedAgentToolCount" class="muted-label"></span></div>
+            <div id="managedAgentTools" class="tool-assignment-list"><div class="empty-state">Loading tools…</div></div>
+            <span id="managedAgentToolHint" class="muted-label"></span>
+            <button class="secondary-btn" id="saveManagedAgentTools">Save tools</button>
           </div>
         </div>
         <div class="settings-block">
@@ -487,7 +496,7 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
   </div>
 </div>
 
-<script src="/static/i18n.js?v=20260929-4"></script>
-<script src="/static/app.js?v=20260929-3"></script>
+<script src="/static/i18n.js?v=20260929-5"></script>
+<script src="/static/app.js?v=20260929-4"></script>
 </body>
 </html>

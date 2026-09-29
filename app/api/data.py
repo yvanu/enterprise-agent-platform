@@ -12,7 +12,7 @@ from app.core.config import get_settings
 from app.db.engine import Database
 from app.db.introspection import describe_schema
 from app.platform.llm import LLMNotConfiguredError, OpenAICompatibleLLM
-from app.platform.policy import require_tool
+from app.platform.policy import builtin_tool_execution_context, require_tool
 from app.platform.runs import start_run
 
 
@@ -50,9 +50,10 @@ def sources() -> list[DataSourceInfo]:
 @router.get("/schema")
 def schema(source: str = Query("default")) -> dict:
     try:
-        require_tool("data", "schema", "read")
-        database = get_database(source)
-        return describe_schema(database.engine, database.schema)
+        with builtin_tool_execution_context("data"):
+            require_tool("data", "schema", "read")
+            database = get_database(source)
+            return describe_schema(database.engine, database.schema)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -60,8 +61,9 @@ def schema(source: str = Query("default")) -> dict:
 @router.post("/sql", response_model=QueryResult)
 def execute_sql(request: SqlRequest) -> QueryResult:
     try:
-        require_tool("data", "readonly_sql", "read")
-        return get_database(request.source).execute_readonly(request.sql)
+        with builtin_tool_execution_context("data"):
+            require_tool("data", "readonly_sql", "read")
+            return get_database(request.source).execute_readonly(request.sql)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -70,7 +72,8 @@ def execute_sql(request: SqlRequest) -> QueryResult:
 def ask(request: AskRequest) -> AgentAnswer:
     run = start_run("data")
     try:
-        answer = DataAgent(get_database(request.source), llm).ask(request.question)
+        with builtin_tool_execution_context("data"):
+            answer = DataAgent(get_database(request.source), llm).ask(request.question)
         run.success(answer.trace)
         return answer
     except LLMNotConfiguredError as exc:

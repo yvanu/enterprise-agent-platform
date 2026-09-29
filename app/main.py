@@ -12,9 +12,11 @@ from app.api.knowledge import agent as knowledge_agent, router as knowledge_rout
 from app.api.ops import router as ops_router
 from app.api.platform import router as platform_router
 from app.api.supervisor import router as supervisor_router
+from app.api.tools import router as tools_router
 from app.core.config import get_settings, validate_settings
 from app.db.demo import initialize_demo_database
 from app.modules.agents.service import agent_service
+from app.modules.tools.service import tool_service
 from app.platform.auth import current_identity
 from app.platform.observability import install_observability
 from app.platform.runs import run_store
@@ -24,11 +26,12 @@ settings = get_settings()
 validate_settings(settings)
 initialize_demo_database(db)
 agent_service.initialize()
+tool_service.initialize()
 
 app = FastAPI(title=settings.app_name)
 install_observability(app, rate_limit_per_minute=settings.rate_limit_per_minute)
 app.include_router(auth_router)
-for router in (agents_router, data_router, knowledge_router, ops_router, platform_router, supervisor_router):
+for router in (agents_router, data_router, knowledge_router, ops_router, platform_router, supervisor_router, tools_router):
     app.include_router(router, dependencies=[Depends(current_identity)])
 
 static_dir = Path(__file__).parent / "static"
@@ -78,6 +81,12 @@ def readiness() -> dict:
         checks["agent_store"] = "ok"
     except Exception as exc:
         checks["agent_store"] = type(exc).__name__
+
+    try:
+        tool_service.list(enabled_only=True)
+        checks["tool_store"] = "ok"
+    except Exception as exc:
+        checks["tool_store"] = type(exc).__name__
 
     if any(value != "ok" for value in checks.values()):
         raise HTTPException(
