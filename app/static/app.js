@@ -9,6 +9,8 @@ const state = {
   approvals: [],
   policies: [],
   tools: [],
+  mcpServers: [],
+  openapiServices: [],
   settings: null,
   identity: null,
   lastReport: "",
@@ -57,6 +59,7 @@ const icon = name => '<svg><use href="#i-' + name + '"/></svg>';
 const duration = ms => ms >= 1000 ? (ms / 1000).toFixed(ms >= 10000 ? 1 : 2) + "s" : (ms ?? 0) + "ms";
 const shortId = value => value ? String(value).slice(0, 8) : "—";
 const titleCase = value => String(value || "").replace(/(^|[_-])([a-z])/g, (_, p, c) => (p ? " " : "") + c.toUpperCase());
+const toolLabel = value => value === "mcp" ? "MCP" : value === "openapi" ? "OpenAPI" : value === "builtin" ? "Built-in" : titleCase(value);
 const bytes = n => n == null ? "—" : n >= 1073741824 ? (n/1073741824).toFixed(1)+" GB" : n >= 1048576 ? (n/1048576).toFixed(1)+" MB" : n >= 1024 ? Math.round(n/1024)+" KB" : n+" B";
 
 function toast(message, type = "ok") {
@@ -1106,43 +1109,82 @@ async function loadTools() {
   if (!state.identity) await loadIdentity();
   state.tools = await api("/api/v1/tools");
   await Promise.all([loadMcpServers(), loadOpenapiServices()]);
+  $("toolCatalogCount").textContent = state.tools.length + (state.tools.length === 1 ? " tool" : " tools");
   $("toolsTable").innerHTML = state.tools.map(tool => {
     const riskClass = tool.risk === "high" ? "error" : tool.risk === "medium" ? "warning" : "healthy";
     return '<tr><td><strong>' + esc(tool.display_name || tool.name) + '</strong><div class="muted-label">' + esc(tool.key) + '</div></td><td>' +
-      esc(titleCase(tool.provider)) + '</td><td>' + esc(titleCase(tool.type)) + '</td><td>' + esc(titleCase(tool.mode)) +
+      esc(toolLabel(tool.provider)) + '</td><td>' + esc(toolLabel(tool.type)) + '</td><td>' + esc(titleCase(tool.mode)) +
       '</td><td><span class="status-chip ' + riskClass + '">' + esc(titleCase(tool.risk)) + '</span></td><td>' +
-      (tool.approval_required ? "Required" : "No") + '</td><td><span class="status-chip ' + (tool.enabled ? "healthy" : "") + '">' +
+      (tool.approval_required ? "Required" : "No") + '</td><td><span class="status-chip ' + (tool.enabled ? "healthy" : "neutral") + '">' +
       (tool.enabled ? "Enabled" : "Disabled") + '</span></td></tr>';
   }).join("") || '<tr><td colspan="7"><div class="empty-state">No tools available.</div></td></tr>';
+  renderToolConnections();
+}
+
+function renderToolConnections() {
+  const root = $("connectionDirectory");
+  const admin = state.identity?.role === "admin";
+  const servers = state.mcpServers || [];
+  const services = state.openapiServices || [];
+  const connectionTotal = servers.length + services.length;
+  const externalToolTotal = state.tools.filter(tool => tool.provider === "mcp" || tool.provider === "openapi").length;
+
+  $("openToolConnection").classList.toggle("hidden", !admin);
+  $("connectionCount").textContent = connectionTotal + (connectionTotal === 1 ? " connection" : " connections");
+  $("externalToolCount").textContent = externalToolTotal + (externalToolTotal === 1 ? " external tool" : " external tools");
+
+  const rows = [
+    ...servers.map(item =>
+      '<div class="connection-row"><div class="resource-icon integration">' + icon("plug") +
+      '</div><div class="connection-main"><span class="connection-kind">MCP server</span><strong>' + esc(item.name) +
+      '</strong><p>' + esc(item.url) + '</p></div><div class="connection-meta"><span>Discovery</span><strong>On demand</strong></div><div class="resource-actions">' +
+      '<span class="status-chip ' + (item.status === "connected" ? "healthy" : "neutral") + '">' + esc(titleCase(item.status)) + '</span>' +
+      (admin ? '<button class="secondary-btn small" data-mcp-discover="' + esc(item.id) + '">Discover tools</button>' : '') + '</div></div>'
+    ),
+    ...services.map(item =>
+      '<div class="connection-row"><div class="resource-icon">' + icon("tool") +
+      '</div><div class="connection-main"><span class="connection-kind">OpenAPI service</span><strong>' + esc(item.name) +
+      '</strong><p>' + esc(item.base_url) + '</p></div><div class="connection-meta"><span>Imported operations</span><strong>' + Number(item.operation_count || 0) +
+      '</strong></div><div class="resource-actions"><span class="status-chip healthy">Imported</span></div></div>'
+    ),
+  ];
+
+  root.innerHTML = rows.join("") || '<div class="connection-empty"><div class="connection-empty-icon">' + icon("plug") +
+    '</div><div><strong>No external connections</strong><p>Built-in tools are ready. Add MCP or OpenAPI only when agents need external capabilities.</p></div>' +
+    (admin ? '<button class="secondary-btn small" data-open-tool-connection>Add connection</button>' : '') + '</div>';
+
+  $$("[data-open-tool-connection]", root).forEach(button => button.onclick = openToolConnectionModal);
+  $$("[data-mcp-discover]", root).forEach(button => button.onclick = async () => {
+    button.disabled = true;
+    try {
+      const tools = await post("/api/v1/mcp/servers/" + encodeURIComponent(button.dataset.mcpDiscover) + "/discover", {});
+      toast(tools.length + " MCP tools imported");
+      await loadTools();
+    } catch (error) { toast(error.message, "error"); }
+    finally { button.disabled = false; }
+  });
 }
 
 async function loadMcpServers() {
-  const root = $("mcpServerList");
-  const admin = state.identity?.role === "admin";
-  $("mcpCreateForm").classList.toggle("hidden", !admin);
   try {
-    const servers = await api("/api/v1/mcp/servers");
-    root.innerHTML = servers.map(item =>
-      '<div class="resource-row"><div class="resource-icon">' + icon("tool") +
-      '</div><div class="resource-main"><strong>' + esc(item.name) +
-      '</strong><p>' + esc(item.url) + '</p></div><div class="resource-actions">' +
-      '<span class="status-chip ' + (item.status === "connected" ? "healthy" : "neutral") + '">' +
-      esc(titleCase(item.status)) + '</span>' +
-      (admin ? '<button class="secondary-btn small" data-mcp-discover="' + esc(item.id) +
-        '">Discover tools</button>' : '') + '</div></div>'
-    ).join("") || '<div class="empty-state">No MCP servers registered.</div>';
-    $$("[data-mcp-discover]", root).forEach(button => button.onclick = async () => {
-      button.disabled = true;
-      try {
-        const tools = await post("/api/v1/mcp/servers/" + encodeURIComponent(button.dataset.mcpDiscover) + "/discover", {});
-        toast(tools.length + " MCP tools imported");
-        await loadTools();
-      } catch (error) { toast(error.message, "error"); }
-      finally { button.disabled = false; }
-    });
+    state.mcpServers = await api("/api/v1/mcp/servers");
   } catch (error) {
-    root.innerHTML = '<div class="empty-state">' + esc(error.message) + '</div>';
+    state.mcpServers = [];
+    toast(error.message, "error");
   }
+  renderToolConnections();
+}
+
+function setToolConnectionKind(kind = "mcp") {
+  $$("[data-connection-kind]").forEach(button => button.classList.toggle("active", button.dataset.connectionKind === kind));
+  $$("[data-connection-pane]").forEach(pane => pane.classList.toggle("hidden", pane.dataset.connectionPane !== kind));
+  $("addMcpServer").classList.toggle("hidden", kind !== "mcp");
+  $("addOpenapiService").classList.toggle("hidden", kind !== "openapi");
+}
+
+function openToolConnectionModal() {
+  setToolConnectionKind("mcp");
+  openModal("toolConnectionModal");
 }
 
 async function addMcpServer() {
@@ -1154,6 +1196,7 @@ async function addMcpServer() {
     await post("/api/v1/mcp/servers", {name, url});
     $("mcpServerName").value = "";
     $("mcpServerUrl").value = "";
+    closeModal("toolConnectionModal");
     toast("MCP server registered");
     await loadMcpServers();
   } catch (error) { toast(error.message, "error"); }
@@ -1161,20 +1204,13 @@ async function addMcpServer() {
 }
 
 async function loadOpenapiServices() {
-  const root = $("openapiServiceList");
-  const admin = state.identity?.role === "admin";
-  $("openapiCreateForm").classList.toggle("hidden", !admin);
   try {
-    const services = await api("/api/v1/openapi/services");
-    root.innerHTML = services.map(item =>
-      '<div class="resource-row"><div class="resource-icon">' + icon("tool") +
-      '</div><div class="resource-main"><strong>' + esc(item.name) +
-      '</strong><p>' + esc(item.base_url) + ' · ' + item.operation_count +
-      ' operations</p></div><div class="resource-actions"><span class="status-chip healthy">Imported</span></div></div>'
-    ).join("") || '<div class="empty-state">No OpenAPI services imported.</div>';
+    state.openapiServices = await api("/api/v1/openapi/services");
   } catch (error) {
-    root.innerHTML = '<div class="empty-state">' + esc(error.message) + '</div>';
+    state.openapiServices = [];
+    toast(error.message, "error");
   }
+  renderToolConnections();
 }
 
 async function addOpenapiService() {
@@ -1191,6 +1227,7 @@ async function addOpenapiService() {
     $("openapiServiceName").value = "";
     $("openapiBaseUrl").value = "";
     $("openapiFile").value = "";
+    closeModal("toolConnectionModal");
     toast(service.operation_count + " OpenAPI tools imported");
     await loadTools();
   } catch (error) { toast(error.message, "error"); }
@@ -1426,6 +1463,8 @@ $("createAgentButton").onclick = createAgent;
 $("saveManagedAgentDetails").onclick = saveManagedAgentDetails;
 $("saveManagedAgentTools").onclick = saveManagedAgentTools;
 $("refreshTools").onclick = loadTools;
+$("openToolConnection").onclick = openToolConnectionModal;
+$$("[data-connection-kind]").forEach(button => button.onclick = () => setToolConnectionKind(button.dataset.connectionKind));
 $("addMcpServer").onclick = addMcpServer;
 $("addOpenapiService").onclick = addOpenapiService;
 $("createManagedAgentVersion").onclick = createManagedAgentVersion;

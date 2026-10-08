@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Enterprise Agent</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261008-2">
+  <link rel="stylesheet" href="/static/app.css?v=20261008-3">
 </head>
 <body class="auth-pending">
 <svg class="svg-sprite" aria-hidden="true">
@@ -368,31 +368,29 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
     </section>
 
     <section class="page" data-page-panel="tools">
-      <header class="page-header"><div><h1>Tools</h1><p>Tool registry with governed MCP and OpenAPI connections.</p></div><button class="secondary-btn" id="refreshTools">Refresh</button></header>
-      <div class="settings-block">
-        <div><h2>MCP servers</h2><p>Only endpoints approved in the server's MCP_ALLOWED_URLS may be registered.</p></div>
-        <div class="settings-fields single">
-          <div id="mcpServerList" class="resource-list"></div>
-          <div id="mcpCreateForm" class="settings-fields single hidden">
-            <label>Server name<input id="mcpServerName" maxlength="120" placeholder="Trusted MCP Server"></label>
-            <label>MCP endpoint<input id="mcpServerUrl" placeholder="https://tools.example.com/mcp"></label>
-            <button class="secondary-btn" id="addMcpServer">Register server</button>
-          </div>
+      <header class="page-header tools-header">
+        <div><h1>Tools</h1><p>Connect governed providers and inspect every capability available to agents.</p></div>
+        <div class="page-actions">
+          <button class="secondary-btn" id="refreshTools">Refresh</button>
+          <button class="primary-btn" id="openToolConnection"><svg><use href="#i-plus"/></svg> Add connection</button>
         </div>
-      </div>
-      <div class="settings-block">
-        <div><h2>OpenAPI services</h2><p>Upload an OpenAPI 3.x JSON file. Requests only reach server-approved base URLs; imported operations always require approval.</p></div>
-        <div class="settings-fields single">
-          <div id="openapiServiceList" class="resource-list"></div>
-          <div id="openapiCreateForm" class="settings-fields single hidden">
-            <label>Service name<input id="openapiServiceName" maxlength="120" placeholder="Enterprise Inventory"></label>
-            <label>Approved base URL<input id="openapiBaseUrl" placeholder="https://api.example.com/v1"></label>
-            <label>OpenAPI JSON document<input id="openapiFile" type="file" accept=".json,application/json"></label>
-            <button class="secondary-btn" id="addOpenapiService">Import OpenAPI tools</button>
-          </div>
+      </header>
+
+      <section class="content-section tools-connections-section">
+        <div class="section-heading">
+          <div><h2>Connections</h2><p>MCP and OpenAPI providers registered for this workspace</p></div>
+          <div class="connection-summary"><span id="connectionCount">0 connections</span><span id="externalToolCount">0 external tools</span></div>
         </div>
-      </div>
-      <div class="dense-table"><table><thead><tr><th>Tool</th><th>Provider</th><th>Type</th><th>Mode</th><th>Risk</th><th>Approval</th><th>Status</th></tr></thead><tbody id="toolsTable"></tbody></table></div>
+        <div id="connectionDirectory" class="connection-list"></div>
+      </section>
+
+      <section class="content-section tools-catalog-section">
+        <div class="section-heading">
+          <div><h2>Tool catalog</h2><p>Built-in and connected tools governed by platform policy</p></div>
+          <span class="muted-label" id="toolCatalogCount">0 tools</span>
+        </div>
+        <div class="dense-table tools-table"><table><thead><tr><th>Tool</th><th>Provider</th><th>Type</th><th>Mode</th><th>Risk</th><th>Approval</th><th>Status</th></tr></thead><tbody id="toolsTable"></tbody></table></div>
+      </section>
     </section>
 
     <section class="page" data-page-panel="integrations">
@@ -463,6 +461,30 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
   </div>
 </div>
 
+<div class="modal-backdrop hidden" id="toolConnectionModal">
+  <div class="modal">
+    <header><div><h2>Add tool connection</h2><p>Choose a provider type. Configuration stays out of the registry until you need it.</p></div><button class="icon-btn" data-close-modal="toolConnectionModal"><svg><use href="#i-x"/></svg></button></header>
+    <div class="modal-body">
+      <div class="connection-type-toggle" role="tablist" aria-label="Connection type">
+        <button class="active" type="button" data-connection-kind="mcp"><span class="connection-type-icon"><svg><use href="#i-plug"/></svg></span><span><strong>MCP server</strong><small>Discover tools from an approved MCP endpoint</small></span></button>
+        <button type="button" data-connection-kind="openapi"><span class="connection-type-icon"><svg><use href="#i-tool"/></svg></span><span><strong>OpenAPI service</strong><small>Import operations from an OpenAPI 3.x JSON document</small></span></button>
+      </div>
+      <div class="connection-pane" data-connection-pane="mcp">
+        <label>Server name<input id="mcpServerName" maxlength="120" placeholder="Trusted MCP Server"></label>
+        <label>MCP endpoint <span>must be allowlisted</span><input id="mcpServerUrl" placeholder="https://tools.example.com/mcp"></label>
+        <p class="form-hint">The endpoint must already exist in the server's MCP_ALLOWED_URLS allowlist.</p>
+      </div>
+      <div class="connection-pane hidden" data-connection-pane="openapi">
+        <label>Service name<input id="openapiServiceName" maxlength="120" placeholder="Enterprise Inventory"></label>
+        <label>Approved base URL<input id="openapiBaseUrl" placeholder="https://api.example.com/v1"></label>
+        <label>OpenAPI JSON document<input id="openapiFile" type="file" accept=".json,application/json"></label>
+        <p class="form-hint">Imported operations are governed tools and always require approval in this version.</p>
+      </div>
+    </div>
+    <footer><button class="secondary-btn" data-close-modal="toolConnectionModal">Cancel</button><button class="primary-btn" id="addMcpServer">Register server</button><button class="primary-btn hidden" id="addOpenapiService">Import service</button></footer>
+  </div>
+</div>
+
 <div class="modal-backdrop hidden" id="docModal">
   <div class="modal">
     <header><div><h2>Add knowledge document</h2><p>Upload a file or paste content.</p></div><button class="icon-btn" id="closeDocForm"><svg><use href="#i-x"/></svg></button></header>
@@ -527,7 +549,7 @@ ORDER BY total DESC</textarea><button class="secondary-btn small" id="runSql">Ru
   </div>
 </div>
 
-<script src="/static/i18n.js?v=20260929-6"></script>
-<script src="/static/app.js?v=20261008-2"></script>
+<script src="/static/i18n.js?v=20261008-3"></script>
+<script src="/static/app.js?v=20261008-3"></script>
 </body>
 </html>

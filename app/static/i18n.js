@@ -35,6 +35,36 @@
     "Save details": "保存信息",
     "Tools": "工具",
     "Platform tool registry shared by agents, policies, approvals, and future MCP integrations.": "平台统一工具注册表，供智能体、策略、审批以及后续 MCP 集成共同使用。",
+    "Connect governed providers and inspect every capability available to agents.": "连接受控工具提供方，并查看智能体可用的全部能力。",
+    "Add connection": "添加连接",
+    "Connections": "连接",
+    "MCP and OpenAPI providers registered for this workspace": "当前工作区已注册的 MCP 与 OpenAPI 提供方",
+    "Tool catalog": "工具目录",
+    "Built-in and connected tools governed by platform policy": "由平台策略统一治理的内置与外部工具",
+    "Add tool connection": "添加工具连接",
+    "Choose a provider type. Configuration stays out of the registry until you need it.": "选择连接类型；配置只在需要时展开，不再占据工具目录。",
+    "Connection type": "连接类型",
+    "MCP server": "MCP 服务",
+    "Discover tools from an approved MCP endpoint": "从已批准的 MCP 地址发现工具",
+    "OpenAPI service": "OpenAPI 服务",
+    "Import operations from an OpenAPI 3.x JSON document": "从 OpenAPI 3.x JSON 文档导入操作",
+    "Server name": "服务名称",
+    "MCP endpoint": "MCP 地址",
+    "must be allowlisted": "需在白名单中",
+    "The endpoint must already exist in the server's MCP_ALLOWED_URLS allowlist.": "该地址必须已加入服务端 MCP_ALLOWED_URLS 白名单。",
+    "Service name": "服务名称",
+    "Approved base URL": "已批准的基础 URL",
+    "OpenAPI JSON document": "OpenAPI JSON 文档",
+    "Imported operations are governed tools and always require approval in this version.": "导入的操作会作为受控工具管理，当前版本执行时始终需要审批。",
+    "Register server": "注册服务",
+    "Import service": "导入服务",
+    "Discovery": "工具发现",
+    "On demand": "按需执行",
+    "Imported operations": "已导入操作",
+    "Imported": "已导入",
+    "Discover tools": "发现工具",
+    "No external connections": "暂无外部连接",
+    "Built-in tools are ready. Add MCP or OpenAPI only when agents need external capabilities.": "内置工具已可用；仅在智能体确需外部能力时添加 MCP 或 OpenAPI 连接。",
     "Provider": "提供方",
     "Mode": "模式",
     "Risk": "风险",
@@ -284,6 +314,7 @@
     "Not configured": "未配置",
     "Configured": "已配置",
     "Connected": "已连接",
+    "Registered": "已注册",
     "Chat model": "对话模型",
     "Embedding model": "Embedding 模型",
     "Test chat": "测试对话模型",
@@ -498,6 +529,9 @@
       let m;
       if ((m = text.match(/^(\d+) approval requests? (?:are|is) waiting$/))) return m[1] + " 个审批请求待处理";
       if ((m = text.match(/^(\d+) agents?$/))) return m[1] + " 个智能体";
+      if ((m = text.match(/^(\d+) connections?$/))) return m[1] + " 个连接";
+      if ((m = text.match(/^(\d+) external tools?$/))) return m[1] + " 个外部工具";
+      if ((m = text.match(/^(\d+) tools?$/))) return m[1] + " 个工具";
       if ((m = text.match(/^(\d+) \/ (\d+) tools$/))) return m[1] + " / " + m[2] + " 个工具";
       if ((m = text.match(/^(.+) has a failed recent run$/))) return agentName(m[1], "zh") + " 最近一次运行失败";
       if ((m = text.match(/^Back to (.+)$/))) return "返回 " + agentName(m[1], "zh");
