@@ -38,7 +38,8 @@
 | `git diff --check` | ✅ 通过 |
 | MCP / REST 模拟联调 | ✅ `httpx.MockTransport` 测试通过 |
 | 真实远端 MCP / REST 服务 | ⚪ 尚未验证 |
-| 线上构建、数据库迁移及部署 | ⚪ 尚未验证 |
+| 线上部署与接口路由 | ✅ 已完成轻量冒烟验收（详见下方二次复检） |
+| 生产 Alembic 迁移 | ⚪ 未执行；当前 SQLite 已存在所需表 |
 
 ## 已知限制和上线门槛
 
@@ -48,9 +49,9 @@
 4. OpenAPI 目前仅支持有限 GET/POST JSON、简单 path/query 参数；不支持 OAuth、`$ref`、YAML、文件上传等。
 5. 自动化通过不证明线上可用；需要真实服务联调、负载/异常测试、迁移演练以及部署验证。
 
-## 2026-10-08 低负载验收记录
+## 2026-10-08 首次低负载验收（发布前历史记录）
 
-**总体结论：代码与 CI 通过；线上部署验收未通过（新版本尚未发布）。**
+**当时结论：代码与 CI 通过；当时新版本尚未发布。** 本节保留原始 404 证据，当前线上状态请以下方「发布后验收」为准。
 
 | 验收维度 | 实测结果 | 判定 |
 | --- | --- | --- |
@@ -66,7 +67,27 @@
 
 定位：仓库 `.github/workflows/ci.yml` 仅测试/安全检查，`.github/workflows/docs.yml` 仅执行 `npm run docs:build`，**两个工作流均无生产发布步骤**。GitHub CI 成功不代表 Cloudflare Worker/文档站已更新。未重启服务、未运行 Docker 构建、未进行压测，也没有修改生产数据。
 
-**解除验收阻塞进展：** 已添加 [安全发布与验收流程](/deployment)：文档由 GitHub Runner 构建后尝试发布至 Cloudflare，后端新增独立的**手动、默认只读预检**工作流，加入 Git SHA / 内存 / 负载 / SQLite 表预检和先备份再单服务重启的流程。执行生产发布仍取决于 GitHub Secrets、人工审批及真实环境验证。实际生产验收通过前不得把 M2.5 标记为「已上线」。
+**解除阻塞进展（历史）：** 已添加 [安全发布与验收流程](/deployment)，后续已使用已有本机 Cloudflare Token 和受控发布脚本完成上线及轻量复检（详见下方二次验收）。生产真实工具调用和迁移演练仍待完成。
+
+## 2026-10-08 发布后验收（已完成）
+
+**结论：M2.5 线上部署与接口冒烟验收通过；真实远程 MCP/企业 REST 业务联调仍未验收。**
+
+| 项目 | 验证证据 | 状态 |
+| --- | --- | --- |
+| Cloudflare Worker | 使用现有 CF Token 发布 `enterprise-agent-docs-worker`，Worker Version `351e5cf1-ed07-439c-9639-d074bd4c4da7`；产物来自 GitHub Runner 构建 | ✅ |
+| API 单服务更新 | `eap-demo.service` 使用 `scripts/release_api.sh deploy`；Git SHA、资源、依赖、SQLite 表预检通过 | ✅ |
+| 数据保护 | 更新前对 `platform_resources.db`、`platform.db`、`knowledge.db` 执行 SQLite 在线备份 | ✅ |
+| API `/health/ready`、`/api/v1/tools` | HTTP 200 | ✅ |
+| API `/api/v1/mcp/servers`、`/api/v1/openapi/services` | HTTP 200，列表尚为空（未接入真实服务） | ✅ |
+| Docs `/PROGRESS`、`/en/PROGRESS`、`/mcp-integration`、`/openapi-integration`、`/deployment` | HTTP 200 | ✅ |
+| 主机资源 | 约 1.6GB RAM；更新后可用内存约 485MB，Swap 未使用，系统负载较低 | ✅ |
+| 真实 MCP / REST 操作与生产幂等、凭证 | 尚无获批准的外部测试端点、实际请求和异常处理验收 | ◻ 待完成 |
+| Alembic 生产升级 | **未执行**；本地 SQLite 已存在所需表，当前版本标记需单独审查 | ◻ 待完成 |
+
+本次发布未在服务器执行 `npm build`、Docker 构建或并行压测；使用 GitHub Runner 静态产物上传 Cloudflare，只重启既有 `eap-demo.service`，未启动第二实例。Cloudflare Token 仅从已有本机环境读取，未写入仓库。
+
+**自动化发布的剩余事项：** 本地 CF Token 可以人工发布，但 GitHub Runner 中尚无对应 Secrets；Docs workflow 现会明确标记「构建成功、发布跳过」，不将跳过误称为已发布。若要后续 push 自动发布，需向 GitHub Actions 单独配置最小权限 Cloudflare Token 和 Account ID。后端 GitHub SSH 发布同样尚未配置。
 
 ## 下一步：M3 异步运行时
 

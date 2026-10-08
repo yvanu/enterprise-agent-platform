@@ -21,7 +21,7 @@
 
 Docs 工作流在 GitHub Runner 上 `npm ci` + `npm run docs:build`，将构建产物作为 GitHub artifact 交给另一个 Job，使用 `cloudflare/wrangler-action@v4` 执行 `wrangler deploy --config wrangler.docs.jsonc`，完成后轻量检查新增页面 HTTP 200。
 
-若凭证缺失，**Publish to Cloudflare 会明确失败**；Build 成功不表示已发布。第一次上线前应核对 Worker 名称 `enterprise-agent-docs-worker` 和 Custom Domain `docs.agent.majhoon.site` 的归属，确保不覆盖其他 Worker。
+若 GitHub Actions 凭证缺失，Workflow 会明确发出 Warning 并**跳过自动发布**；Build 成功不表示已发布。第一次上线前应核对 Worker 名称 `enterprise-agent-docs-worker` 和 Custom Domain `docs.agent.majhoon.site` 的归属，确保不覆盖其他 Worker。
 
 ## 3. API 手动发布通道
 
@@ -46,7 +46,15 @@ Docs 工作流在 GitHub Runner 上 `npm ci` + `npm run docs:build`，将构建�
 
 本方案没有完整蓝绿发布和自动回滚。单实例重启会造成短暂中断，真实 MCP/REST 接入仍缺少可信凭证仓库和幂等能力。生产变更必须由有权限的操作者明确选择 `deploy`，不能把只读检查结果当成已上线。
 
-## 4. 轻量验收 URL
+## 4. 2026-10-08 已执行的低负载人工发布
+
+现场核对了本机已有的 `CLOUDFLARE_API_TOKEN` 和 `CF_ACCOUNT_ID` 环境变量、Cloudflare 账号下目标 Worker 与 `docs.agent.majhoon.site` 域名绑定，**没有把凭证写入仓库**。使用 GitHub-hosted Runner 已构建的静态 artifact（84 个文件）在服务器上通过已有缓存 Wrangler 低优先级上传，**不重新进行 VitePress 构建**；文档已上线。
+
+后端在 `scripts/release_api.sh check` 通过后执行 `deploy`：先备份现有三个 SQLite 数据库，再只重启 `eap-demo.service`。更新后的 API 健康、MCP/OpenAPI 路由及 docs 进度、MCP、OpenAPI 和 deployment 页面均通过 HTTP 200 的轻量检查。机器没有出现内存耗尽，Swap 未使用。
+
+**目前尚未配置 GitHub Runner Cloudflare/SSH Secrets，所以这套后续自动发布链路尚未具备无人值守能力。** 请注意人工发布只解决上线阻塞，真实远端 MCP/企业 REST 操作及生产幂等/迁移审查仍需另行验收。完整证据见 [开发进度](/PROGRESS)。
+
+## 5. 轻量验收 URL
 
 在新版本发布后逐项复测：
 

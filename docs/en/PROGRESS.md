@@ -35,11 +35,12 @@ This page distinguishes **implemented code** from production deployment and real
 | Alembic revision history / diff checks | ✅ Passed |
 | MCP and REST mocked integration (`httpx.MockTransport`) | ✅ Passed |
 | Live external integrations | ◻ Not verified |
-| Production deployment and schema upgrade | ◻ Not verified |
+| Production deployment and route smoke check | ✅ Completed; see post-release acceptance below |
+| Production Alembic upgrade | ◻ Not run; existing SQLite tables verified |
 
-## 2026-10-08 low-load acceptance
+## 2026-10-08 initial low-load acceptance (pre-release record)
 
-**Verdict: code and CI pass, production rollout acceptance is blocked because the new version is not deployed.**
+**Historical verdict:** code and CI passed, but the new version was not yet deployed. This section preserves original 404 evidence; see the post-release acceptance below for current status.
 
 | Check | Evidence | Verdict |
 | --- | --- | --- |
@@ -54,7 +55,24 @@ This page distinguishes **implemented code** from production deployment and real
 
 **Root cause:** `.github/workflows/ci.yml` runs tests/security checks only; `.github/workflows/docs.yml` builds documentation but contains **no deployment step**. A green GitHub workflow does not publish Cloudflare Workers/docs automatically. No Docker build, service restart, load testing, or production DB mutation was performed.
 
-**Unblock progress:** A GitHub Runner docs build-and-publish workflow and a gated, manually triggered API preflight/restart workflow have been prepared. The API release checks SHA/resources/schema before backing up SQLite and restarting only the single existing service. See [Safe deployment](/deployment). GitHub Secrets, manual approval and actual live verification are still required; M2.5 remains **implemented but not production-accepted**.
+**Resolution of the initial deployment blocker:** the controlled server's existing Cloudflare credential and GitHub Runner build artifact were used to publish docs; the guarded API script was used for a single-service deployment, with a backup and live smoke checks. See below. Real MCP/REST business integration is still outstanding.
+
+## 2026-10-08 post-release acceptance
+
+**Verdict: deployment and HTTP route smoke checks PASSED; live external MCP/enterprise REST operations and full production hardening remain outstanding.**
+
+| Verification | Evidence | Result |
+| --- | --- | --- |
+| Cloudflare Worker | Deployed `enterprise-agent-docs-worker` from GitHub Runner artifact; Worker version `351e5cf1-ed07-439c-9639-d074bd4c4da7` | ✅ |
+| Guarded API rollout | Existing `eap-demo.service` restarted after SHA, memory, load, dependencies and DB schema preflight | ✅ |
+| Data safeguards | SQLite online backups of three legacy databases before service restart | ✅ |
+| API health, Tool Registry, MCP / OpenAPI service routes | HTTP 200 for all four routes | ✅ |
+| Docs progress, MCP, OpenAPI and deployment pages | HTTP 200 | ✅ |
+| Server resources | ~485 MB available after rollout; swap unused; no build, Docker rebuild, or load test | ✅ |
+| Approved real remote MCP/REST calls; credentials/idempotency | Not exercised | ◻ |
+| Production Alembic upgrade | Not run; existing required SQLite tables were checked | ◻ |
+
+The current machine has Cloudflare credentials for **controlled manual publishing**, but the GitHub Actions runner has not been configured with Cloudflare deployment secrets. The Docs workflow now explicitly reports **build complete / deployment skipped** when these secrets are absent; that state must not be represented as an automatic production deployment. See [Safe deployment](/deployment).
 
 ## Known limits and next milestone
 
