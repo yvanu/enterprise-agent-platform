@@ -53,12 +53,15 @@ agent_version
 created_at
 ```
 
-Current statuses are primarily:
+Current statuses:
 
 ```text
 ok
 error
+waiting_approval
 ```
+
+`waiting_approval` is a **recorded tool proposal**, not a fully persisted Agent execution context. The operator can approve exact arguments and resume that **single tool action**, but multi-step reasoning state is not restored.
 
 The Run Store uses SQLite in v0.1.
 
@@ -152,11 +155,17 @@ The current runtime does not yet support:
 - streaming answer events
 - Run cancellation
 - Run retry lineage
-- waiting-for-approval Run state
+- durable waiting-for-approval **Run continuation** (the lightweight `waiting_approval` proposal status already exists)
 - span tree
 - token and cost accounting
 
-## 9. Target async runtime
+## 9. Current governed MCP / OpenAPI path
+
+Generic Agent uses OpenAI-compatible Function Calling to propose one of the MCP/OpenAPI tools assigned to its **published Version**. Before remote execution the platform requires a single-use approval frozen to Agent ID, Version, Tool ID and exact JSON arguments. An unapproved proposal creates a `waiting_approval` Run; a separately approved resume action executes the saved arguments without asking the LLM to reselect the operation. The output is summarized and a new Run / Trace is recorded.
+
+Currently remote calls are synchronous, and both the approval store and Run store use the legacy SQLite backend. No durable multi-step LLM context or async worker exists yet. Production timeout/idempotency semantics and live remote integration remain unverified.
+
+## 10. Target async runtime
 
 Planned v0.3 direction:
 
@@ -193,7 +202,7 @@ timeout
 
 Streaming should use SSE first because the primary event direction is server → browser.
 
-## 10. Runtime design rule
+## 11. Runtime design rule
 
 Do not add queue, worker, cancellation, or distributed runtime complexity before the Agent resource model is stable.
 

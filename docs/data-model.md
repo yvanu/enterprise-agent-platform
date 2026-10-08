@@ -62,7 +62,12 @@ actor
 consumed_by
 created_at
 decided_at
+arguments_json          (remote tools only)
+agent_id                (remote tools only)
+agent_version           (remote tools only)
 ```
+
+For MCP/OpenAPI calls, `arguments_json` stores canonicalized, exact arguments; approval matches the **same Agent ID, published Version, Tool ID and arguments** before one-time consumption. For built-in fixed actions these fields are null.
 
 Important invariant:
 
@@ -226,7 +231,17 @@ published_at
 
 SQLAlchemy defines the runtime model and Alembic owns schema migration. Compose points `PLATFORM_DATABASE_URL` at PostgreSQL. The lightweight standalone demo may use SQLite.
 
-M2 has now added Tool Registry and Agent Version Tool Assignment. MCP discovery in M2.5 will import discovered tools into these same tables rather than creating a parallel capability model. Data Source promotion remains a later resource-model step.
+M2 has added Tool Registry and Agent Version Tool Assignment. M2.5 registers MCP and OpenAPI tools into those same tables, without bypassing assignment/policy checks.
+
+Additional M2.5 tables:
+
+- `mcp_servers`: `id`, `name`, `url`, `status`, timestamps. Tool namespace: `mcp.<server_id>`.
+- `openapi_services`: `id`, `name`, `base_url`, normalized `operations` JSON, timestamps. Tool namespace: `openapi.<service_id>`.
+- Migration chain: `20260929_0001` → `20260929_0002` → `20261008_0003` → `20261008_0004`.
+
+Current `agent_runs.status` may be `ok`, `error` or `waiting_approval`. This status alone does **not** persist the complete multi-step Agent runtime state; M3 remains responsible for queue/worker and durable Run transitions.
+
+Data Source promotion remains a later resource-model step.
 
 ## 9. Long-term target
 

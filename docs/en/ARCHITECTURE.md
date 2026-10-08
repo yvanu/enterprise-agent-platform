@@ -110,7 +110,29 @@ Execution
 
 Dedicated Data / Knowledge / Ops workspaces and the managed Agent Runtime share the same published-version Tool context. Supervisor delegation switches into each child Agent's context instead of bypassing child capability boundaries.
 
-MCP is intentionally deferred to M2.5. Discovered MCP tools must enter the same registry before assignment and policy evaluation.
+M2.5 now imports MCP Streamable HTTP and a restricted OpenAPI 3.x JSON GET/POST subset into the **same Tool Registry**. Server-controlled exact URL allowlists constrain the remote destinations; each imported tool must be assigned to a published Agent Version and defaults to high-risk/approval-required.
+
+### Governed remote-tool execution
+
+```text
+MCP discovery / OpenAPI JSON import
+    ↓
+Tool Registry → Draft version assignment → Publish
+    ↓
+Generic Agent Function Calling (single operation proposal)
+    ↓
+waiting_approval Run (no network side effect)
+    ↓
+Human approval: Agent ID + Version + Tool ID + exact JSON arguments
+    ↓
+Single-use deterministic resume → MCP / REST endpoint
+    ↓
+Run / Trace
+```
+
+Arguments are canonicalized and persisted in the Approval Store. Modified arguments, cross-agent reuse, version drift, and replay are denied. This is a **synchronous single-step proposal/resume workflow**, not a persistent asynchronous run engine. Live integrations, outbound network policies, credentials, and idempotency still require production verification.
+
+See [Development Progress](/en/PROGRESS), [MCP integration](/mcp-integration), and [OpenAPI integration](/openapi-integration).
 
 ## Cross-agent incident investigation
 
@@ -167,7 +189,7 @@ sequenceDiagram
   TOOL-->>OP: result
 ```
 
-Approval IDs are single-use and bound to the exact `Agent + Tool + Target`. The model cannot create a new arbitrary shell command from an approved fixed action.
+Approval IDs are single-use and bound to `Agent + Tool + Target`. Remote MCP/OpenAPI approvals additionally bind exact JSON arguments, Agent ID, and published Version. The model cannot create a new arbitrary shell command from an approved fixed action.
 
 ## Security boundaries
 

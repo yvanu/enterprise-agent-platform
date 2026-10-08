@@ -18,7 +18,10 @@ const zhTheme = {
         { text: '项目介绍', link: '/' },
         { text: '快速开始', link: '/getting-started' },
         { text: '系统架构', link: '/ARCHITECTURE' },
-        { text: '开发路线图', link: '/roadmap' }
+        { text: '开发路线图', link: '/roadmap' },
+        { text: '开发进度', link: '/PROGRESS' },
+        { text: 'MCP 接入', link: '/mcp-integration' },
+        { text: 'OpenAPI 接入', link: '/openapi-integration' }
       ]
     },
     {
@@ -73,7 +76,10 @@ const enTheme = {
         { text: 'Introduction', link: '/en/' },
         { text: 'Getting Started', link: '/en/getting-started' },
         { text: 'Architecture', link: '/en/ARCHITECTURE' },
-        { text: 'Development Roadmap', link: '/en/roadmap' }
+        { text: 'Development Roadmap', link: '/en/roadmap' },
+        { text: 'Development Progress', link: '/en/PROGRESS' },
+        { text: 'MCP Integration', link: '/mcp-integration' },
+        { text: 'OpenAPI Integration', link: '/openapi-integration' }
       ]
     },
     {

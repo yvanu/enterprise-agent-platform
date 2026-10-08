@@ -31,6 +31,12 @@ features:
     details: 当前使用 SQLite 与进程内组件保持 Demo 自包含，同时预留 PostgreSQL、pgvector、OIDC 与共享状态的升级路径。
 ---
 
+## 最新开发进度
+
+截至 **2026-10-08**：M1 Dynamic Agent、M2 Tool Platform、M2.5 MCP/OpenAPI 首版代码已完成，**73 项测试通过**。当前处于 **M3 异步 Runtime 开发准备阶段**；真实远端服务联调与线上部署尚未验收。
+
+查看 [开发进度](/PROGRESS)、[MCP 接入](/mcp-integration) 和 [OpenAPI 接入](/openapi-integration)。
+
 ## 这个项目展示什么
 
 Enterprise Agent Platform 重点不是“再做一个聊天机器人”，而是围绕 LLM 能力补齐真正进入企业系统所需要的工程层：

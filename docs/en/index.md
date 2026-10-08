@@ -31,6 +31,12 @@ features:
     details: SQLite and in-process components keep the demo self-contained, while interfaces keep PostgreSQL, pgvector, OIDC and shared state as clear upgrade paths.
 ---
 
+## Latest development status
+
+As of **2026-10-08**, the code for M1 Dynamic Agents, M2 Tool Platform, and the initial M2.5 MCP/OpenAPI integrations is implemented with **73 passing tests**. **M3 Async Runtime is next**. Real remote-service integration and production deployment have not been accepted yet.
+
+See [Development Progress](/en/PROGRESS), [MCP integration](/mcp-integration), and [OpenAPI integration](/openapi-integration).
+
 ## What this project demonstrates
 
 Enterprise Agent Platform focuses on the engineering layer around LLM capabilities: **how agents are constrained, audited, observed, evaluated and safely allowed to act**.

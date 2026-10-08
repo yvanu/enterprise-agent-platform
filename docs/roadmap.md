@@ -7,6 +7,8 @@
 
 # 1. 当前阶段
 
+> **进度快照：2026-10-08 · M2.5 基础功能代码已完成 · 下一阶段 M3 Async Agent Runtime · 73 项测试通过。** 具体已实现项、未完成事项和验证边界见 [开发进度](/PROGRESS)。
+
 当前版本已经具备：
 
 - Data Agent
@@ -28,9 +30,9 @@
 - 在线 Demo
 - 独立文档站
 
-当前产品已经不再是简单的 Prompt Demo，但仍然存在一个核心限制：
+当前项目已完成 M1 的动态 Agent Definition / Version / Publish、M2 的 Tool Registry / Versioned Assignment，以及 M2.5 第一阶段的 MCP Streamable HTTP / OpenAPI JSON 工具接入。Generic Agent 已具备审批后远程工具调用和参数级单次消费。
 
-> Data / Knowledge / Ops / Supervisor 仍然主要是代码中预定义的 Agent，而不是平台中可以动态创建、配置、版本化和发布的一等资源。
+**仍未完成：** 真正的异步队列、Worker、SSE、取消与重试、持久化多步骤流程；远程工具目前通过模拟服务完成自动化测试，真实环境联调和生产安全验收尚未完成。内置 Data/Knowledge/Ops 仍使用各自专用执行链路。
 
 因此后续开发主线应从：
 
@@ -656,7 +658,9 @@ environment
 
 ---
 
-# 8. M2.5：MCP
+# 8. M2.5：MCP / OpenAPI Tool Integration
+
+**状态：✅ 基础功能代码完成（2026-10-08）；真实服务联调及生产验收未完成**
 
 **优先级：P0/P1**
 
@@ -742,19 +746,27 @@ MCP → 直接暴露给模型
 - Data / Knowledge / Ops 专用工作区已进入对应 Built-in Published Version Tool Context
 - Supervisor 调用子 Agent 时进入子 Agent 自己的 Tool Context
 - Agent Detail Configuration 已加入 Tool Assignment UI
-- 当前自动化回归：`63 passed`
+- M2 阶段完成时的自动化回归：`63 passed`（历史验收基线）
 
-M2 正式关闭。下一阶段进入 M2.5：MCP。
+M2 已于 2026-09-29 关闭；M2.5 随后于 2026-10-08 完成首版功能代码，目前下一开发阶段是 **M3**。
 
 ---
 
-## M2.5 验收
+## M2.5 实现核对
 
-- [ ] MCP Server
-- [ ] MCP Tool Discovery
-- [ ] MCP Tool Import to Registry
-- [ ] MCP Tool Assignment
-- [ ] MCP Tool 经过统一 Policy 执行
+- [x] MCP Server 注册和允许列表检查
+- [x] MCP Tool Discovery、导入统一 Tool Registry
+- [x] MCP Tool 按 Agent Version 绑定，统一 Policy / 单次审批执行
+- [x] Generic Agent Function Calling → 参数提案 → 人工批准 → 冻结参数恢复
+- [x] OpenAPI 3.x JSON 受控导入 GET/POST 工具；共享上述权限与审批链
+- [x] Web Console 注册 MCP Server、导入 OpenAPI JSON、管理工具绑定、查看审批参数
+- [x] 自动化回归 73 passed（2026-10-08）
+- [ ] 真实远程 MCP Server / 企业 REST 服务端到端联调
+- [ ] 远程认证凭证托管、超时幂等和多步骤任务恢复的生产验收
+
+当前只代表 **M2.5 功能实现阶段**，不可把模拟服务测试等同于生产就绪。详细进度见 [开发进度](/PROGRESS)，操作规范见 [MCP 接入](/mcp-integration) 和 [OpenAPI 接入](/openapi-integration)。
+
+**下一开发阶段：M3 Async Agent Runtime。**
 
 ---
 
@@ -2634,9 +2646,9 @@ v0.3.0
 
 # 29. 下一步立即执行项
 
-下一个开发阶段固定为：
+下一个开发阶段按 **M3：Async Agent Runtime（v0.3）** 推进。M1/M2/M2.5 已具备基础功能，以下为保留的 v0.2 历史阶段计划，不再代表当前待办。
 
-# v0.2 — Dynamic Agent Platform
+## 历史计划：v0.2 — Dynamic Agent Platform
 
 执行顺序：
 

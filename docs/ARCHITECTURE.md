@@ -139,7 +139,33 @@ Execution
 
 Data / Knowledge / Ops 的专用工作区与统一 Agent Runtime 使用同一套 Published Version Tool Context。Supervisor 委派到子 Agent 时，会切换到对应子 Agent 的 Tool Context，因此 Supervisor 本身不能借编排绕过子 Agent 的能力边界。
 
-MCP 在 M2.5 接入时只负责 Tool Discovery / Invocation Adapter；发现出的 Tool 必须先进入同一个 Registry，再经过 Assignment / Policy / Approval。
+M2.5 已将 MCP Streamable HTTP 与 OpenAPI 3.x JSON GET/POST 两类远程工具导入同一 Tool Registry。只有管理员配置在服务端精确 URL allowlist 内的端点可调用；工具统一按 Agent 已发布版本分配，并默认高风险、需要人工审批。
+
+### 远程工具执行链路（M2.5）
+
+```text
+Console: MCP Discover / OpenAPI JSON Import
+    ↓
+Tool Registry (provider=mcp | openapi)
+    ↓
+Draft Agent Version → Tool Assignment → Publish
+    ↓
+Generic Agent Function Calling
+    ↓
+Propose a single exact-argument tool call (no remote execution)
+    ↓
+Run status: waiting_approval
+    ↓
+Human review (Agent ID + Version + Tool ID + JSON arguments)
+    ↓
+Single-use approval → deterministic resume
+    ↓
+Allowlisted MCP / REST request → Run / Trace
+```
+
+审批参数按 JSON 规范化后持久化，**参数篡改、跨 Agent 或 Version 使用、审批重放均被拒绝**。审批在远端调用前消耗，避免盲目重复执行带副作用操作。此方案目前是同步的单步提案/恢复，并非完整异步任务状态机。
+
+相关文档：[进度](/PROGRESS)、[MCP 接入](/mcp-integration)、[OpenAPI 接入](/openapi-integration)。真实远端联调、网络出口策略、凭证托管与请求幂等仍属上线前工作。
 
 ## 跨 Agent 故障调查
 
@@ -196,7 +222,7 @@ sequenceDiagram
   TOOL-->>OP: result
 ```
 
-Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。即使模型被 Prompt Injection，也不能把“已批准的固定动作”扩展成任意 Shell 命令。
+Approval ID 只能使用一次，内置固定操作绑定精确的 `Agent + Tool + Target`；MCP/OpenAPI 远程操作还绑定 `Agent ID + Published Version + JSON Arguments`。即使模型被 Prompt Injection，也不能把“已批准的固定动作”扩展成任意 Shell 命令。
 
 ## 安全边界
 
@@ -207,7 +233,7 @@ Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。�
 | Agent 能力 | Tool Registry + Versioned Agent Tool Assignment + Tool Policy |
 | SQL 执行 | SQL Guard + 推荐数据库只读账号 |
 | Knowledge 可见范围 | 按角色过滤文档 |
-| 高风险写操作 | Human Approval + 单次消费 + Target 绑定 |
+| 高风险写操作 | Human Approval + 单次消费 + Target 绑定；远程操作额外绑定 Agent/Version/参数 |
 | Ops 命令 | 固定参数 / 服务端 Allowlist |
 | 请求追踪 | X-Request-ID + X-Correlation-ID 写入 Agent Run |
 | API 错误 | 统一 Error Envelope + 稳定错误码 + Request Context |
@@ -224,7 +250,7 @@ Approval ID 只能使用一次，并绑定精确的 `Agent + Tool + Target`。�
 | Demo 业务数据 | SQLite / 外部 SQLAlchemy 数据库 | PostgreSQL / Kingbase |
 | Knowledge Chunk + Embedding | SQLite | pgvector / 托管向量数据库 |
 | Agent Definition / Version | PostgreSQL（Compose）/ SQLite（轻量 Demo） | PostgreSQL |
-| Tool Registry / Agent Tool Assignment | 同 Agent Platform Store | PostgreSQL |
+| Tool Registry / Agent Tool Assignment / MCP & OpenAPI Registry | 同 Agent Platform Store | PostgreSQL |
 | Runs / Approvals | SQLite（v0.1 兼容） | v0.3 Async Runtime 时迁 PostgreSQL |
 | Auth Identity | 配置 Token Map + 进程内 Web Session | OIDC / 企业 IdP + 共享 Session Store |
 

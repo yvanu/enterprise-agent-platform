@@ -93,6 +93,10 @@ An approval must match the exact `Agent + Tool + Target`.
 
 Approved records are consumed once and cannot be replayed.
 
+M2.5 adds stricter checks for external MCP/OpenAPI tools: approvals bind **Agent ID + Published Version + Tool ID + canonical JSON arguments** in addition to namespace, tool name and target. The model initially produces a proposal without making the network request. Human review confirms the frozen arguments; deterministic resume uses those arguments, not a fresh model-generated call. Different arguments, changed Agent Version, cross-Agent use and replay are rejected.
+
+The approval is consumed **before** sending the external request. Consequently, an ambiguous timeout must not trigger automatic replay; production deployment requires upstream idempotency and reconciliation. Imported tools default to high risk and approval-required even for GET.
+
 Current lifecycle:
 
 ```text
@@ -178,7 +182,15 @@ Raw user questions are not stored in the Run model by default.
 
 Future trace persistence must introduce explicit retention and masking policies before storing full prompts, tool inputs, or outputs.
 
-## 11. v0.1 security limitations
+## 11. Remote integration boundaries (M2.5)
+
+- MCP Streamable HTTP uses an operator-managed exact endpoint allowlist; OpenAPI 3.x JSON imports use an operator-managed exact base URL allowlist. Untrusted OpenAPI `servers` entries never override the destination.
+- Both client types disable environment-derived proxies and redirect following; OpenAPI path/query values and request size/response size are bounded by the implementation.
+- No arbitrary destination, operation-level URL, request header, file upload, or credential input is accepted from the model.
+- No built-in remote auth secret vault yet. Use a trusted network/API gateway, enforce outbound network isolation and TLS in production, and test actual external servers.
+- Separate limitations: persistent execution context, production-grade idempotency and full audit/retention controls are not yet implemented.
+
+## 12. Known production security limitations
 
 Known limitations:
 
@@ -189,5 +201,7 @@ Known limitations:
 - no dedicated credential vault yet
 - no full audit log yet
 - rate limiting is single-process
+- external MCP/OpenAPI endpoints and authentication are not production-verified
+- no persistent async workflow recovery or cross-service idempotency guarantee
 
 These are planned upgrades, not hidden assumptions.

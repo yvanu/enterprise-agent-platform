@@ -7,6 +7,8 @@
 
 # 1. Current stage
 
+> **Snapshot: 2026-10-08 · M2.5 core implementation completed · M3 Async Agent Runtime next · 73 tests passing.** See [Development progress](/en/PROGRESS) for verified scope and blockers.
+
 The current platform already includes:
 
 - Data Agent
@@ -27,9 +29,9 @@ The current platform already includes:
 - Live Demo
 - Documentation site
 
-The main limitation is structural:
+M1 Dynamic Agents and M2 Tool Registry / versioned assignments are implemented. The initial M2.5 scope also adds allowlisted MCP Streamable HTTP and OpenAPI 3.x JSON tools, Generic Agent function calling, argument-bound approval, and single-use deterministic resumption.
 
-> Data / Knowledge / Ops / Supervisor are still primarily predefined agents in code rather than first-class resources that users can create, configure, version, and publish.
+**Remaining limitations:** synchronous execution; no persistent worker queue, SSE, cancel/retry, durable multi-step workflows, or credential vault. Automated remote integrations use mocked services; production end-to-end verification remains outstanding.
 
 The roadmap therefore changes the development focus from:
 
@@ -433,15 +435,15 @@ Evidence:
 - Managed Agent runs and dedicated built-in workspaces enforce versioned assignments.
 - Supervisor delegation enters each child Agent's Tool context.
 - Agent Configuration now exposes Tool Assignment.
-- Current regression: `63 passed`.
+- At M2 completion: `63 passed` (historical acceptance baseline).
 
-M2 is closed. The next milestone is M2.5: MCP.
+M2 closed on 2026-09-29; initial M2.5 implementation followed on 2026-10-08. The next active development milestone is **M3**.
 
 ---
 
-# 8. M2.5 — MCP
+# 8. M2.5 — MCP and OpenAPI tools
 
-**Status: ▶ Next milestone**
+**Status: ✅ Initial implementation complete (2026-10-08); live integration and production acceptance outstanding.**
 
 **Priority: P0/P1**
 
@@ -492,13 +494,18 @@ Agent Runtime
 
 Never expose discovered MCP tools directly to the model without platform policy.
 
-Acceptance:
+Implemented and verified:
 
-- [ ] Add MCP Server
-- [ ] Discover tools
-- [ ] Import tools into registry
-- [ ] Assign tools to agent
-- [ ] Execute through unified policy
+- [x] Allowlisted MCP Server registration and tool discovery
+- [x] MCP tool import into Tool Registry and Agent Version assignments
+- [x] Governed Generic Agent function-calling, argument-level approval and single-use deterministic resume
+- [x] Allowlisted OpenAPI 3.x JSON GET/POST import into the same Registry / approval flow
+- [x] Console registration, tool assignment, and approval parameter review
+- [x] 73 automated tests passing (2026-10-08)
+- [ ] Real external MCP / enterprise REST end-to-end integration
+- [ ] Credential management, production idempotency, and durable multi-step runs
+
+See [Development Progress](/en/PROGRESS), [MCP integration](/mcp-integration) and [OpenAPI integration](/openapi-integration). Next active milestone: **M3 Async Agent Runtime**.
 
 ---
 
