@@ -1,6 +1,6 @@
 # 开发进度与验收台账
 
-> 最后核对：**2026-10-08** · 本地工作区 `main` · MCP/OpenAPI 功能提交：`bd5fe6f` · **73 项自动化测试通过、0 失败、1 条依赖弃用警告**。
+> 最后核对：**2026-10-08** · 本地工作区 `main` · MCP/OpenAPI 功能提交：`bd5fe6f` · **76 项自动化测试通过、0 失败、1 条依赖弃用警告**；公开 HTTPS MCP/REST 只读联调通过。
 
 此页记录 **代码实现状态**，不将模拟接口测试、仓库提交或本地构建等同于线上部署验收。
 
@@ -12,7 +12,8 @@
 | M1 / Dynamic Agent Platform | ✅ 已完成 | Agent CRUD、不可变 Version、Publish / Rollback、Built-in 迁移 |
 | M2 / Tool Platform | ✅ 已完成 | Tool Registry、Agent Version Assignment、Policy、控制台 |
 | M2.5 / MCP + OpenAPI | ✅ 基础代码完成 | MCP Streamable HTTP、OpenAPI 3.x JSON GET/POST、工具发现/导入、Generic Agent Function Calling、参数级审批/恢复 |
-| M2.5 真实服务验收 | ◻ 待完成 | 真实 MCP Server、企业 REST、身份凭证、网络/超时和幂等验收 |
+| M2.5 外网公开服务联调 | ✅ 只读场景通过 | DeepWiki MCP 工具发现/调用、JSONPlaceholder GET，Agent 审批与 Run/Trace |
+| M2.5 企业服务生产验收 | ◻ 待完成 | 企业私有 MCP/REST、身份凭证、网络/超时和幂等验收 |
 | M3 / Async Runtime | ◻ 未开始 | Durable Run、队列/Worker、SSE、取消/重试、异步审批恢复 |
 | M4+ / 深度平台化 | ◻ 规划中 | Span/Token/Cost、评测平台、Knowledge/Credential、租户与 OIDC |
 
@@ -31,13 +32,14 @@
 
 | 检查项 | 结果 |
 | --- | --- |
-| `.venv/bin/python -m pytest -q` | ✅ 73 passed |
+| `.venv/bin/python -m pytest -q` | ✅ 76 passed |
 | `node --check app/static/app.js` | ✅ 通过 |
 | `.venv/bin/python -m compileall -q app` | ✅ 通过 |
 | `.venv/bin/alembic history` | ✅ 识别 0003 → 0004 (head) |
 | `git diff --check` | ✅ 通过 |
 | MCP / REST 模拟联调 | ✅ `httpx.MockTransport` 测试通过 |
-| 真实远端 MCP / REST 服务 | ⚪ 尚未验证 |
+| 外网公开 MCP / REST 只读服务 | ✅ 独立临时库端到端 HTTPS 联调通过 |
+| 企业真实 MCP / REST 服务 | ⚪ 尚未验证 |
 | 线上部署与接口路由 | ✅ 已完成轻量冒烟验收（详见下方二次复检） |
 | 生产 Alembic 迁移 | ⚪ 未执行；当前 SQLite 已存在所需表 |
 
@@ -101,6 +103,19 @@
 - ✅ `nice -n 15 timeout 25s`：3 passed，耗时约 3.7 秒，峰值约 111 MB
 
 **仍待验收：** 第三方 MCP/REST 的真实 HTTPS、认证、网络策略、业务行为、超时与幂等。详见 [Mock 与真实服务联调指南](/mock-integration)。
+
+## 2026-10-08 外网真实 MCP / REST 只读联调
+
+**结论：两条公开第三方 HTTPS 只读服务链路通过；企业内部业务服务仍待验收。** 使用 [可复现脚本](https://github.com/yvanu/enterprise-agent-platform/blob/main/scripts/live_integration_smoke.py)，显式 `--run-live`，并将 Demo、Agent/Tool Registry、审批、Run 与 Knowledge 数据库路径全部定向到进程专属临时目录。
+
+| 测试服务 | 过程 | 实测结果 |
+| --- | --- | --- |
+| `https://mcp.deepwiki.com/mcp` | 真正执行 MCP initialize → tools/list → 发现 3 个工具 → 导入 Registry → 绑定 Published Agent v2 → 固定 LLM 提案 → 审批 → `read_wiki_structure` | ✅ 返回 `pallets/flask` 的 Wiki 目录 |
+| `https://jsonplaceholder.typicode.com` | 导入只有 GET `/todos/{id}` 的 OpenAPI 3.x 规范 → 绑定 Published Agent v2 → 提案 → 审批 → 实际 GET `/todos/1` | ✅ 返回 id=1 且含 title 的 JSON |
+| 审批及跟踪 | 两个 Agent 都验证了未批准拒绝、批准后成功、重放拒绝；检查 `waiting_approval` 与 `ok` Run | ✅ |
+| 机器资源 | `nice -n 15 timeout 60s`；耗时约 2.3 秒；峰值 RSS 约 102MB；无需服务重启或构建 | ✅ |
+
+测试使用 **FastAPI TestClient + 真正对外 HTTPS 请求**，并非向线上运行服务注册真实工具：线上平台数据和配置未修改，公网接口保持原状。没有真实 LLM、OAuth/API Key、真实企业数据或写请求；外部公共服务稳定性和实际生产网络出口策略需要单独验证。生产环境中的企业认证、幂等、超时与长流程仍属于 M2.5 后续验收事项。
 
 ## 下一步：M3 异步运行时
 

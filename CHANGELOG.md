@@ -33,6 +33,11 @@ Dynamic Agent Platform milestone.
 
 ## Unreleased
 
+### Public live MCP and REST read-only smoke
+
+- Added opt-in isolated live HTTPS smoke script for DeepWiki Streamable HTTP MCP and JSONPlaceholder GET, with published Agent assignment, exact-argument approval, one-time resume, and Run/Trace validation.
+- Actual public external service calls passed; no production databases, real LLM, credentials, or writes involved.
+
 ### Wire-level mock integration verification
 
 - Added actual loopback TCP/HTTP integration tests for MCP initialize/session/SSE discovery and tool execution, OpenAPI GET/POST, human-approval resume, single-use grants, and redirect blocking.

@@ -53,6 +53,8 @@ Tool 已从静态 Policy 列表升级成平台资源，并与 Agent Version 绑�
 
 补充真实回环 TCP / HTTP 的集成回归：MCP 握手与 SSE、OpenAPI GET/POST、参数级审批/恢复及重定向拒绝；仅使用 `127.0.0.1` 随机端口和测试临时库，不访问真实业务服务。执行 `nice -n 15 timeout 25s .venv/bin/python -m pytest -q tests/test_wire_mock_integration.py`。参见 [Mock 联调和真实服务接入步骤](docs/mock-integration.md)。
 
+公网只读联调另提供**显式可选**命令：`nice -n 15 timeout 60s .venv/bin/python scripts/live_integration_smoke.py --run-live`。已用独立临时库与固定 LLM 答复，实际通过 DeepWiki MCP 的工具发现/只读调用以及 JSONPlaceholder REST GET，验证了批准前拦截、批准后结果、Run/Trace 与防重放。它不会注册到线上服务，也不加入默认 CI。
+
 ## 业务 Agent 与 Supervisor
 
 ### Data Agent

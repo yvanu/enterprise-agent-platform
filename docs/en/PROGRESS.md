@@ -1,6 +1,6 @@
 # Development progress and verification
 
-> Snapshot: **2026-10-08** · local `main` · MCP/OpenAPI feature commit `bd5fe6f` · **73 tests passed, 0 failed, 1 dependency deprecation warning**.
+> Snapshot: **2026-10-08** · local `main` · MCP/OpenAPI feature commit `bd5fe6f` · **76 tests passed, 0 failed, 1 dependency deprecation warning**; live public read-only MCP/REST HTTPS integration passed.
 
 This page distinguishes **implemented code** from production deployment and real-service acceptance.
 
@@ -12,7 +12,8 @@ This page distinguishes **implemented code** from production deployment and real
 | M1 / Dynamic Agent Platform | ✅ Completed | Agent CRUD, immutable versions, publish/rollback, built-ins |
 | M2 / Tool Platform | ✅ Completed | Registry, versioned assignment, policy and console |
 | M2.5 / MCP and OpenAPI | ✅ Initial code complete | MCP Streamable HTTP, OpenAPI 3.x JSON GET/POST, discovery/import, Generic Agent Function Calling, argument-bound approval and resume |
-| M2.5 live integration acceptance | ◻ Outstanding | External MCP, enterprise REST, credentials, network/timeouts/idempotency |
+| M2.5 public live read-only integration | ✅ Passed | DeepWiki MCP discover/call and JSONPlaceholder GET with Agent approval/Run/Trace |
+| M2.5 enterprise production acceptance | ◻ Outstanding | Private enterprise MCP/REST, auth, network/timeouts/idempotency |
 | M3 / Async Runtime | ◻ Not started | Durable Run, queue/worker, SSE, cancellation/retry and durable approval continuation |
 | M4+ / Platform hardening | ◻ Planned | Spans, token/cost, evaluation, knowledge/credentials, tenants and OIDC |
 
@@ -30,11 +31,12 @@ This page distinguishes **implemented code** from production deployment and real
 
 | Check | Result |
 | --- | --- |
-| `.venv/bin/python -m pytest -q` | ✅ 73 passed |
+| `.venv/bin/python -m pytest -q` | ✅ 76 passed |
 | JavaScript syntax / Python compile checks | ✅ Passed |
 | Alembic revision history / diff checks | ✅ Passed |
 | MCP and REST mocked integration (`httpx.MockTransport`) | ✅ Passed |
-| Live external integrations | ◻ Not verified |
+| Public read-only live MCP/REST HTTPS | ✅ End-to-end isolated test passed |
+| Enterprise/private external integrations | ◻ Not verified |
 | Production deployment and route smoke check | ✅ Completed; see post-release acceptance below |
 | Production Alembic upgrade | ◻ Not run; existing SQLite tables verified |
 
@@ -85,6 +87,17 @@ The current machine has Cloudflare credentials for **controlled manual publishin
 - ✅ `nice -n 15 timeout 25s`: 3 passed, ~3.7s total, ~111MB peak RSS
 
 **Not covered:** real third-party HTTPS, auth credentials, production network path, side effects, timeouts/idempotency or live LLM prompts. See [Mock and live integration guide](/mock-integration).
+
+## 2026-10-08 live public MCP/REST read-only integration
+
+**Verdict: both real public HTTPS end-to-end integrations PASSED; private enterprise service acceptance remains outstanding.** Used explicit opt-in [smoke script](https://github.com/yvanu/enterprise-agent-platform/blob/main/scripts/live_integration_smoke.py) with disposable platform/approval/run/knowledge/demo databases and a deterministic fake LLM.
+
+- ✅ DeepWiki MCP `https://mcp.deepwiki.com/mcp`: real initialize, `tools/list` (3 discovered), register, publish/version assignment, argument-bound approval, and `read_wiki_structure` of `pallets/flask`.
+- ✅ JSONPlaceholder REST `https://jsonplaceholder.typicode.com`: restricted OpenAPI import, actual read-only `GET /todos/1`, valid id/title payload, exact-argument approval.
+- ✅ Both runs recorded `waiting_approval` → `ok`; unapproved requests and approval replay rejected.
+- ✅ `nice -n 15 timeout 60s`: ~2.3s, ~102MB peak RSS; no app restart, server-side build, or production data mutation.
+
+**Scope:** TestClient inbound with **real third-party HTTPS outbound**, not live platform database registration or live LLM credentials. No private service auth, production write action, network fault testing, or enterprise idempotency qualification.
 
 ## Known limits and next milestone
 
