@@ -74,6 +74,18 @@ This page distinguishes **implemented code** from production deployment and real
 
 The current machine has Cloudflare credentials for **controlled manual publishing**, but the GitHub Actions runner has not been configured with Cloudflare deployment secrets. The Docs workflow now explicitly reports **build complete / deployment skipped** when these secrets are absent; that state must not be represented as an automatic production deployment. See [Safe deployment](/deployment).
 
+## 2026-10-08 real-HTTP wire mock integration
+
+**Result: 3 wire-level mock scenarios PASSED.** Unlike `httpx.MockTransport`, a real loopback HTTP server binds to an ephemeral `127.0.0.1` port. The platform makes actual HTTPX socket connections with an isolated temporary Agent/Tool/Approval/Run database and a deterministic fake LLM.
+
+- ✅ MCP initialize, session header, SSE `tools/list`, real `tools/call`
+- ✅ OpenAPI 3.x JSON import, real GET path/query and POST JSON body
+- ✅ Agent proposal, approval and deterministic resume, Run/Trace
+- ✅ No pre-approval remote call, single-use approval, replay rejection, HTTP 302 redirect not followed
+- ✅ `nice -n 15 timeout 25s`: 3 passed, ~3.7s total, ~111MB peak RSS
+
+**Not covered:** real third-party HTTPS, auth credentials, production network path, side effects, timeouts/idempotency or live LLM prompts. See [Mock and live integration guide](/mock-integration).
+
 ## Known limits and next milestone
 
 The current agent runtime is synchronous. An approval proposal is durable in the Approval Store, but the original multi-step execution state is **not** durable. A previously consumed approval is not retried automatically: external operations may have succeeded even if the HTTP response was lost. Production deployment requires real integration tests, idempotency design, credential handling, outbound network isolation, schema migration rehearsal, and audit checks.

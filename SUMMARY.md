@@ -9,6 +9,7 @@
 * [Tool & Approval Security](docs/security.md)
 * [MCP Integration](docs/mcp-integration.md)
 * [OpenAPI Integration](docs/openapi-integration.md)
+* [Wire Mock Integration Tests](docs/mock-integration.md)
 * [Demo Guide](docs/DEMO.md)
 * [Interview Guide](docs/INTERVIEW.md)
 * [Changelog](CHANGELOG.md)

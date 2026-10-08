@@ -49,6 +49,10 @@ Tool 已从静态 Policy 列表升级成平台资源，并与 Agent Version 绑�
 
 详细用法、安全边界和首版限制见 [OpenAPI 接入说明](docs/openapi-integration.md)。
 
+### MCP / OpenAPI 真实 HTTP Mock 联调
+
+补充真实回环 TCP / HTTP 的集成回归：MCP 握手与 SSE、OpenAPI GET/POST、参数级审批/恢复及重定向拒绝；仅使用 `127.0.0.1` 随机端口和测试临时库，不访问真实业务服务。执行 `nice -n 15 timeout 25s .venv/bin/python -m pytest -q tests/test_wire_mock_integration.py`。参见 [Mock 联调和真实服务接入步骤](docs/mock-integration.md)。
+
 ## 业务 Agent 与 Supervisor
 
 ### Data Agent

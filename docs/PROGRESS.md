@@ -89,6 +89,19 @@
 
 **自动化发布的剩余事项：** 本地 CF Token 可以人工发布，但 GitHub Runner 中尚无对应 Secrets；Docs workflow 现会明确标记「构建成功、发布跳过」，不将跳过误称为已发布。若要后续 push 自动发布，需向 GitHub Actions 单独配置最小权限 Cloudflare Token 和 Account ID。后端 GitHub SSH 发布同样尚未配置。
 
+## 2026-10-08 MCP / REST 真实 HTTP Mock 联调
+
+**结论：3 个 Wire Mock 场景通过**；区别于先前仅使用 `httpx.MockTransport` 的模拟逻辑测试，此次将远端模拟服务绑定到本机 `127.0.0.1` 随机端口，让平台的 HTTPX Client 发起真实 TCP/HTTP 请求。
+
+- ✅ MCP `initialize`、Session ID、`notifications/initialized`、`tools/list` SSE、`tools/call`
+- ✅ OpenAPI 3.x JSON 导入，真实 HTTP GET 路径/Query、POST JSON 参数传递
+- ✅ Agent Version Tool Assignment、LLM 固定提案、人工审批、确定性恢复、Run/Trace
+- ✅ 无审批不发包、审批单次消费与防重放、拒绝真实 HTTP 302 跳转
+- ✅ 测试仅使用临时平台/审批/Run 数据库和固定 LLM，不调用生产业务服务
+- ✅ `nice -n 15 timeout 25s`：3 passed，耗时约 3.7 秒，峰值约 111 MB
+
+**仍待验收：** 第三方 MCP/REST 的真实 HTTPS、认证、网络策略、业务行为、超时与幂等。详见 [Mock 与真实服务联调指南](/mock-integration)。
+
 ## 下一步：M3 异步运行时
 
 优先顺序：建立持续化 Run / Run Event 状态机 → 单 Worker 队列执行 → 任务状态查询 → SSE 事件推送 → 取消与超时 → 失败重试、幂等及审批暂停/恢复的持久化整合。保持小规模可验证后再决定是否引入 Redis/Celery。

@@ -33,6 +33,12 @@ Dynamic Agent Platform milestone.
 
 ## Unreleased
 
+### Wire-level mock integration verification
+
+- Added actual loopback TCP/HTTP integration tests for MCP initialize/session/SSE discovery and tool execution, OpenAPI GET/POST, human-approval resume, single-use grants, and redirect blocking.
+- All wire tests use an ephemeral local port, disposable platform/approval/run databases and a deterministic fake LLM. No real external services are contacted.
+- Documented the live MCP/REST integration checklist and its production limits.
+
 ### OpenAPI Tool Platform (M2.5 second stage)
 
 - Added admin-only OpenAPI 3.x JSON inline import of allowlisted GET/POST REST operations with fixed server-controlled base URL.

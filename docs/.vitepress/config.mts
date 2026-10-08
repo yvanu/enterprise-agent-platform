@@ -22,7 +22,8 @@ const zhTheme = {
         { text: '开发进度', link: '/PROGRESS' },
         { text: '安全发布与验收', link: '/deployment' },
         { text: 'MCP 接入', link: '/mcp-integration' },
-        { text: 'OpenAPI 接入', link: '/openapi-integration' }
+        { text: 'OpenAPI 接入', link: '/openapi-integration' },
+        { text: 'MCP / REST Mock 联调', link: '/mock-integration' }
       ]
     },
     {
@@ -81,7 +82,8 @@ const enTheme = {
         { text: 'Development Progress', link: '/en/PROGRESS' },
         { text: 'Safe Deployment', link: '/deployment' },
         { text: 'MCP Integration', link: '/mcp-integration' },
-        { text: 'OpenAPI Integration', link: '/openapi-integration' }
+        { text: 'OpenAPI Integration', link: '/openapi-integration' },
+        { text: 'Mock Integration Tests', link: '/mock-integration' }
       ]
     },
     {
