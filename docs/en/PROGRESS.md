@@ -37,6 +37,25 @@ This page distinguishes **implemented code** from production deployment and real
 | Live external integrations | ◻ Not verified |
 | Production deployment and schema upgrade | ◻ Not verified |
 
+## 2026-10-08 low-load acceptance
+
+**Verdict: code and CI pass, production rollout acceptance is blocked because the new version is not deployed.**
+
+| Check | Evidence | Verdict |
+| --- | --- | --- |
+| Host resources | ~1.6GB RAM; available 482MB before, 440MB after; swap unused; disk 75% | ✅ Low-load checks safe |
+| Local regression | Single-process `nice` + 25-second timeout: 73 passed; 126540KB peak RSS; ~4.9 seconds | ✅ |
+| GitHub workflows | CI and Docs builds for `9027a24` succeeded | ✅ |
+| Existing production health | `/health/live` and `/health/ready` HTTP 200; all readiness stores ok | ✅ **Old service healthy** |
+| MCP API | `https://agent.majhoon.site/api/v1/mcp/servers` HTTP 404 | ❌ Not deployed |
+| OpenAPI API | `https://agent.majhoon.site/api/v1/openapi/services` HTTP 404 | ❌ Not deployed |
+| New docs pages | `/PROGRESS`, `/en/PROGRESS`, `/mcp-integration`, `/openapi-integration` HTTP 404 | ❌ Not deployed |
+| Production migrations / real remote tools | Not run; deployment and safe test endpoints not available | ◻ Pending |
+
+**Root cause:** `.github/workflows/ci.yml` runs tests/security checks only; `.github/workflows/docs.yml` builds documentation but contains **no deployment step**. A green GitHub workflow does not publish Cloudflare Workers/docs automatically. No Docker build, service restart, load testing, or production DB mutation was performed.
+
+**Unblock:** use a remote CI/Cloudflare builder, not this memory-constrained server; back up and stage the `0003/0004` migrations; verify new backend routes and newly published docs with lightweight HTTP probes; then perform a real approved MCP/REST integration smoke test. Until then, M2.5 is **implemented but not production-accepted**.
+
 ## Known limits and next milestone
 
 The current agent runtime is synchronous. An approval proposal is durable in the Approval Store, but the original multi-step execution state is **not** durable. A previously consumed approval is not retried automatically: external operations may have succeeded even if the HTTP response was lost. Production deployment requires real integration tests, idempotency design, credential handling, outbound network isolation, schema migration rehearsal, and audit checks.
