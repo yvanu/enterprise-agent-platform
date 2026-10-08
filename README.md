@@ -35,7 +35,17 @@ Tool 已从静态 Policy 列表升级成平台资源，并与 Agent Version 绑�
 - Supervisor 委派子 Agent 时切换到各子 Agent 的 Tool Context，不绕过能力边界
 - Policies 页面继续复用原 API，但数据源已经切换为 Tool Registry
 
-MCP Server / Tool Discovery 保留到 M2.5，届时发现出来的 MCP Tool 直接进入同一 Registry，而不是绕过 Policy 暴露给模型。当前 Generic Custom Agent 已能版本化保存 Tool Assignment，但通用 Function-Calling / Tool Dispatch 还未开启；M2 先把能力边界、版本和治理模型做正确，后续 Universal Runtime 再消费这些 Assignment。
+### M2.5 MCP 工具接入（第一阶段）
+
+支持管理员注册允许列表内的 Streamable HTTP MCP Server、发现并注册工具、在 Agent Version 中分配工具，以及 Generic Agent 的 OpenAI-compatible Function Calling 工具执行循环。每一次 MCP 工具调用仍须经过 Tool Assignment、Policy 和一次性审批检查，执行记录进入 Run/Trace。Web Console 的 Tools 页面管理 MCP Server，Agent Playground 可提交 MCP 审批申请并使用已通过的审批编号。
+
+**安全边界：** 远端 MCP Tool 默认高风险写操作。当前 Generic Agent 采用“具体 JSON 参数提案 → 人工审批 → 确定性恢复”，审批绑定 Agent ID、发布版本、Tool ID 和完整参数，单次消费。执行安全边界已有测试；真实高危生产接入前仍需完成远端联调、超时/幂等设计和多步骤持久化工作流。详见 [MCP 接入与限制](docs/mcp-integration.md)。
+
+### M2.5 OpenAPI REST 工具接入（第一阶段）
+
+支持由管理员上传 OpenAPI 3.x JSON 规范，并将限定的 GET/POST JSON 操作导入统一 Tool Registry。实际 REST 地址必须在服务端 `OPENAPI_ALLOWED_BASE_URLS` 白名单中；规范中内置的服务器地址不参与调用。工具按照 Agent Version 授权，默认高风险并需要完整参数级审批。Generic Agent 可以通过 Function Calling 提议操作，人工审批后按照冻结参数恢复执行。控制台 Tools 页面可以导入规范并查看已接入的服务。
+
+详细用法、安全边界和首版限制见 [OpenAPI 接入说明](docs/openapi-integration.md)。
 
 ## 业务 Agent 与 Supervisor
 

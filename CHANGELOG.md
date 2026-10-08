@@ -33,6 +33,22 @@ Dynamic Agent Platform milestone.
 
 ## Unreleased
 
+### OpenAPI Tool Platform (M2.5 second stage)
+
+- Added admin-only OpenAPI 3.x JSON inline import of allowlisted GET/POST REST operations with fixed server-controlled base URL.
+- Imported operations enter the Tool Registry and published Agent Tool assignments, with mandatory parameter-bound approval and one-time consumption.
+- Generic Agent proposal/resume now supports both MCP and OpenAPI providers, sharing trace, approval and policy enforcement.
+- Tools console supports importing OpenAPI JSON files; added security regression tests for untrusted paths, query keys, parameter tampering and replay.
+
+### MCP Tool Runtime (M2.5 first stage)
+
+- Added allowlisted MCP Streamable HTTP discovery, Tool Registry import, one-time approval-gated calls and MCP Server management UI.
+- Generic Agent now exposes only enabled, published-version-assigned MCP tools through OpenAI-compatible Function Calling.
+- Unapproved or unassigned remote calls fail closed; tool outputs enter the model context and execution trace.
+- Agent Playground now proposes exact MCP arguments for human review and offers deterministic resume after approval.
+- Bound approvals to Agent ID, published Agent Version, Tool ID and canonical JSON arguments; reject tampering, cross-agent use, version drift and replay.
+- Pending tool proposals have an explicit `waiting_approval` Run status; paused operations survive page reload via approval records.
+
 ### Tool Platform
 
 - Added persistent Tool Registry and version-scoped Agent Tool assignments.

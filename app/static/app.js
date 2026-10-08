@@ -464,6 +464,7 @@ async function loadManagedAgentDetail() {
   }
   renderManagedAgentVersions(agent);
   await loadManagedAgentTools(agent);
+  await loadManagedMcpApprovals(agent);
 }
 
 async function loadManagedAgentTools(agent) {
@@ -505,6 +506,85 @@ async function loadManagedAgentTools(agent) {
     $("managedAgentToolHint").textContent = "";
     $("saveManagedAgentTools").classList.add("hidden");
   }
+}
+
+async function loadManagedMcpApprovals(agent) {
+  const root = $("managedMcpApprovals");
+  root.classList.add("hidden");
+  root.innerHTML = "";
+  if (agent.type !== "generic" || !agent.published_version ||
+      !["operator","admin"].includes(state.identity?.role)) return;
+  const assigned = await api("/api/v1/agents/" + encodeURIComponent(agent.id) +
+    "/versions/" + agent.published_version + "/tools");
+  if (!assigned.some(x => x.enabled && x.tool.enabled && ["mcp", "openapi"].includes(x.tool.provider))) return;
+  root.classList.remove("hidden");
+  const approvals = await api("/api/v1/platform/approvals?limit=100");
+  const related = approvals.filter(x => x.agent_id === agent.id &&
+    x.agent_version === agent.published_version && x.arguments !== null &&
+    (x.status === "pending" || x.status === "approved"));
+  root.innerHTML = '<span class="muted-label">Run the agent to generate a parameter-specific proposal.</span>' +
+    related.map(x => '<div class="mcp-proposal"><strong>' + esc(x.agent + "." + x.tool) +
+      ' · #' + x.id + ' (' + esc(x.status) + ')</strong><pre>' +
+      esc(JSON.stringify(x.arguments, null, 2)) + '</pre>' +
+      (x.status === "approved" ? '<button class="primary-btn small" data-resume-existing="' + x.id +
+      '">Resume approved operation</button>' : '<span class="muted-label">Awaiting reviewer decision</span>') +
+      '</div>').join("");
+  $$("[data-resume-existing]", root).forEach(button => button.onclick = async () => {
+    button.disabled = true;
+    try {
+      const result = await post("/api/v1/agents/" + encodeURIComponent(agent.id) +
+        "/approvals/" + button.dataset.resumeExisting + "/resume",
+        {input:$("managedAgentInput").value});
+      $("managedAgentAnswer").textContent = result.answer;
+      renderTrace("managedAgentTrace", result.trace || []);
+      toast("Approved remote tool operation completed");
+      await loadManagedMcpApprovals(agent);
+    } catch (error) { toast(error.message, "error"); button.disabled = false; }
+  });
+}
+
+function renderPendingMcpApprovals(agent, proposals, originalInput) {
+  const root = $("managedMcpApprovals");
+  if (!proposals.length) return;
+  root.classList.remove("hidden");
+  root.innerHTML = '<strong>Pending remote tool operation — not executed</strong>' +
+    '<span class="muted-label">Review exact arguments, request approval, then resume once approved.</span>' +
+    proposals.map((tool, index) =>
+      '<div class="mcp-proposal"><strong>' + esc(tool.namespace + "." + tool.tool) +
+      '</strong><pre>' + esc(JSON.stringify(tool.arguments, null, 2)) + '</pre>' +
+      '<div class="mcp-approval-row"><button class="secondary-btn small" data-propose-index="' + index +
+      '">Request approval</button><button class="primary-btn small hidden" data-resume-index="' + index +
+      '">Resume approved operation</button><span data-approval-state="' + index + '"></span></div></div>'
+    ).join("");
+  $$("[data-propose-index]", root).forEach(button => button.onclick = async () => {
+    const index = Number(button.dataset.proposeIndex);
+    const tool = proposals[index];
+    button.disabled = true;
+    try {
+      const approval = await post("/api/v1/platform/approvals", {
+        agent:tool.namespace, tool:tool.tool, target:"tool:" + tool.tool_id,
+        arguments:tool.arguments, agent_id:agent.id, agent_version:agent.published_version,
+        reason:"Remote tool operation proposed by " + agent.name,
+      });
+      root.querySelector('[data-approval-state="' + index + '"]').textContent =
+        "Approval #" + approval.id + " pending. Review under Approvals.";
+      const resume = root.querySelector('[data-resume-index="' + index + '"]');
+      resume.dataset.approvalId = approval.id;
+      resume.classList.remove("hidden");
+      button.classList.add("hidden");
+    } catch (error) { toast(error.message, "error"); button.disabled = false; }
+  });
+  $$("[data-resume-index]", root).forEach(button => button.onclick = async () => {
+    button.disabled = true;
+    try {
+      const result = await post("/api/v1/agents/" + encodeURIComponent(agent.id) +
+        "/approvals/" + button.dataset.approvalId + "/resume", {input:originalInput});
+      $("managedAgentAnswer").textContent = result.answer;
+      renderTrace("managedAgentTrace", result.trace || []);
+      toast("Approved remote tool operation completed");
+      root.classList.add("hidden");
+    } catch (error) { toast(error.message, "error"); button.disabled = false; }
+  });
 }
 
 async function saveManagedAgentTools() {
@@ -636,13 +716,19 @@ async function runManagedAgent() {
   $("runManagedAgent").disabled = true;
   $("managedAgentAnswer").textContent = "Running published version…";
   try {
+    const input = $("managedAgentInput").value;
     const result = await post("/api/v1/agents/" + encodeURIComponent(agent.id) + "/run", {
-      input:$("managedAgentInput").value,
-      source:"default",
+      input, source:"default",
     });
     $("managedAgentAnswer").textContent = result.answer;
     renderTrace("managedAgentTrace", result.trace || []);
-    toast("Agent run completed");
+    if (result.pending_tools?.length) {
+      renderPendingMcpApprovals(agent, result.pending_tools, input);
+      toast("Remote tool action needs parameter-scoped approval");
+    } else {
+      $("managedMcpApprovals").classList.add("hidden");
+      toast("Agent run completed");
+    }
   } catch (error) {
     $("managedAgentAnswer").textContent = error.message;
     toast(error.message, "error");
@@ -982,9 +1068,11 @@ async function loadApprovals() {
   updateApprovalCount();
   $("approvalCards").innerHTML = state.approvals.length ? state.approvals.map(x => {
     const execute = x.status === "approved" && ["service_restart","document_delete"].includes(x.tool);
-    return '<div class="approval-row"><div class="approval-risk">' + (x.tool === "service_restart" ? "H" : "M") +
+    return '<div class="approval-row"><div class="approval-risk">' + ((x.agent.startsWith("mcp.") || x.agent.startsWith("openapi.")) || x.tool === "service_restart" ? "H" : "M") +
       '</div><div class="approval-main"><strong>' + esc(titleCase(x.tool)) + '</strong><span>' + esc(x.reason || x.target) +
-      '</span></div><div class="approval-meta"><span>Requester</span><strong>' + esc(x.requested_by || "—") +
+      '</span>' + (x.arguments === null ? '' :
+      '<div class="muted-label">Agent ' + esc(shortId(x.agent_id)) + ' · v' + esc(x.agent_version) + ' · ' + esc(x.target) +
+      '</div><pre class="approval-arguments">' + esc(JSON.stringify(x.arguments, null, 2)) + '</pre>') + '</div><div class="approval-meta"><span>Requester</span><strong>' + esc(x.requested_by || "—") +
       '</strong></div><div class="approval-meta"><span>Status</span><strong>' + esc(titleCase(x.status)) +
       '</strong></div><div class="button-row">' + (x.status === "pending" ? '<button class="secondary-btn small" data-decision="rejected" data-approval="' +
       x.id + '">Reject</button><button class="primary-btn small" data-decision="approved" data-approval="' + x.id + '">Approve</button>' : '') +
@@ -1015,7 +1103,9 @@ async function executeApproval(id) {
 }
 
 async function loadTools() {
+  if (!state.identity) await loadIdentity();
   state.tools = await api("/api/v1/tools");
+  await Promise.all([loadMcpServers(), loadOpenapiServices()]);
   $("toolsTable").innerHTML = state.tools.map(tool => {
     const riskClass = tool.risk === "high" ? "error" : tool.risk === "medium" ? "warning" : "healthy";
     return '<tr><td><strong>' + esc(tool.display_name || tool.name) + '</strong><div class="muted-label">' + esc(tool.key) + '</div></td><td>' +
@@ -1024,6 +1114,87 @@ async function loadTools() {
       (tool.approval_required ? "Required" : "No") + '</td><td><span class="status-chip ' + (tool.enabled ? "healthy" : "") + '">' +
       (tool.enabled ? "Enabled" : "Disabled") + '</span></td></tr>';
   }).join("") || '<tr><td colspan="7"><div class="empty-state">No tools available.</div></td></tr>';
+}
+
+async function loadMcpServers() {
+  const root = $("mcpServerList");
+  const admin = state.identity?.role === "admin";
+  $("mcpCreateForm").classList.toggle("hidden", !admin);
+  try {
+    const servers = await api("/api/v1/mcp/servers");
+    root.innerHTML = servers.map(item =>
+      '<div class="resource-row"><div class="resource-icon">' + icon("tool") +
+      '</div><div class="resource-main"><strong>' + esc(item.name) +
+      '</strong><p>' + esc(item.url) + '</p></div><div class="resource-actions">' +
+      '<span class="status-chip ' + (item.status === "connected" ? "healthy" : "neutral") + '">' +
+      esc(titleCase(item.status)) + '</span>' +
+      (admin ? '<button class="secondary-btn small" data-mcp-discover="' + esc(item.id) +
+        '">Discover tools</button>' : '') + '</div></div>'
+    ).join("") || '<div class="empty-state">No MCP servers registered.</div>';
+    $$("[data-mcp-discover]", root).forEach(button => button.onclick = async () => {
+      button.disabled = true;
+      try {
+        const tools = await post("/api/v1/mcp/servers/" + encodeURIComponent(button.dataset.mcpDiscover) + "/discover", {});
+        toast(tools.length + " MCP tools imported");
+        await loadTools();
+      } catch (error) { toast(error.message, "error"); }
+      finally { button.disabled = false; }
+    });
+  } catch (error) {
+    root.innerHTML = '<div class="empty-state">' + esc(error.message) + '</div>';
+  }
+}
+
+async function addMcpServer() {
+  const name = $("mcpServerName").value.trim();
+  const url = $("mcpServerUrl").value.trim();
+  if (!name || !url) return toast("Server name and URL required", "error");
+  $("addMcpServer").disabled = true;
+  try {
+    await post("/api/v1/mcp/servers", {name, url});
+    $("mcpServerName").value = "";
+    $("mcpServerUrl").value = "";
+    toast("MCP server registered");
+    await loadMcpServers();
+  } catch (error) { toast(error.message, "error"); }
+  finally { $("addMcpServer").disabled = false; }
+}
+
+async function loadOpenapiServices() {
+  const root = $("openapiServiceList");
+  const admin = state.identity?.role === "admin";
+  $("openapiCreateForm").classList.toggle("hidden", !admin);
+  try {
+    const services = await api("/api/v1/openapi/services");
+    root.innerHTML = services.map(item =>
+      '<div class="resource-row"><div class="resource-icon">' + icon("tool") +
+      '</div><div class="resource-main"><strong>' + esc(item.name) +
+      '</strong><p>' + esc(item.base_url) + ' · ' + item.operation_count +
+      ' operations</p></div><div class="resource-actions"><span class="status-chip healthy">Imported</span></div></div>'
+    ).join("") || '<div class="empty-state">No OpenAPI services imported.</div>';
+  } catch (error) {
+    root.innerHTML = '<div class="empty-state">' + esc(error.message) + '</div>';
+  }
+}
+
+async function addOpenapiService() {
+  const name = $("openapiServiceName").value.trim();
+  const base_url = $("openapiBaseUrl").value.trim();
+  const file = $("openapiFile").files[0];
+  if (!name || !base_url || !file) return toast("Name, approved URL and JSON file are required", "error");
+  if (file.size > 262144) return toast("OpenAPI JSON must be 256KB or smaller", "error");
+  const button = $("addOpenapiService");
+  button.disabled = true;
+  try {
+    const document = JSON.parse(await file.text());
+    const service = await post("/api/v1/openapi/services", {name, base_url, document});
+    $("openapiServiceName").value = "";
+    $("openapiBaseUrl").value = "";
+    $("openapiFile").value = "";
+    toast(service.operation_count + " OpenAPI tools imported");
+    await loadTools();
+  } catch (error) { toast(error.message, "error"); }
+  finally { button.disabled = false; }
 }
 
 async function loadPolicies() {
@@ -1255,6 +1426,8 @@ $("createAgentButton").onclick = createAgent;
 $("saveManagedAgentDetails").onclick = saveManagedAgentDetails;
 $("saveManagedAgentTools").onclick = saveManagedAgentTools;
 $("refreshTools").onclick = loadTools;
+$("addMcpServer").onclick = addMcpServer;
+$("addOpenapiService").onclick = addOpenapiService;
 $("createManagedAgentVersion").onclick = createManagedAgentVersion;
 $("runManagedAgent").onclick = runManagedAgent;
 $("archiveManagedAgent").onclick = archiveManagedAgent;

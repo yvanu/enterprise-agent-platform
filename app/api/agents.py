@@ -116,6 +116,24 @@ def archive_agent(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@router.post("/{agent_id}/approvals/{approval_id}/resume", response_model=AgentRunResponse)
+def resume_approved_mcp(
+    agent_id: str, approval_id: int, request: AgentRunRequest,
+    identity: Annotated[Identity, Depends(require_roles("operator", "admin"))],
+) -> AgentRunResponse:
+    agent = agent_service.get(agent_id)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent 不存在")
+    try:
+        return agent_runtime.resume_mcp(agent, approval_id, request, identity)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @router.post("/{agent_id}/run", response_model=AgentRunResponse)
 def run_agent(
     agent_id: str,

@@ -99,6 +99,8 @@ class AgentPublishRequest(BaseModel):
 class AgentRunRequest(BaseModel):
     input: str = Field(min_length=1, max_length=20_000)
     source: str = "default"
+    # IDs of individually approved, one-time Tool operations; never shown to the LLM.
+    approval_ids: dict[str, int] = Field(default_factory=dict)
 
 
 class AgentRunResponse(BaseModel):
@@ -108,3 +110,4 @@ class AgentRunResponse(BaseModel):
     answer: str
     trace: list[dict] = Field(default_factory=list)
     raw: dict | None = None
+    pending_tools: list[dict] = Field(default_factory=list)

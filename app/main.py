@@ -9,7 +9,9 @@ from app.api.agents import router as agents_router
 from app.api.auth import router as auth_router
 from app.api.data import db, router as data_router
 from app.api.knowledge import agent as knowledge_agent, router as knowledge_router
+from app.api.mcp import router as mcp_router
 from app.api.ops import router as ops_router
+from app.api.openapi import router as openapi_router
 from app.api.platform import router as platform_router
 from app.api.supervisor import router as supervisor_router
 from app.api.tools import router as tools_router
@@ -31,7 +33,7 @@ tool_service.initialize()
 app = FastAPI(title=settings.app_name)
 install_observability(app, rate_limit_per_minute=settings.rate_limit_per_minute)
 app.include_router(auth_router)
-for router in (agents_router, data_router, knowledge_router, ops_router, platform_router, supervisor_router, tools_router):
+for router in (agents_router, data_router, knowledge_router, ops_router, platform_router, supervisor_router, tools_router, mcp_router, openapi_router):
     app.include_router(router, dependencies=[Depends(current_identity)])
 
 static_dir = Path(__file__).parent / "static"

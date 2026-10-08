@@ -49,6 +49,10 @@ class Settings(BaseSettings):
 
     platform_db_path: str = "./data/platform.db"
     platform_database_url: str = "sqlite:///./data/platform_resources.db"
+    # Exact MCP endpoints authorized by the operator; empty means no outbound MCP access.
+    mcp_allowed_urls: str = ""
+    # Exact approved REST API roots, no spec-supplied arbitrary URLs.
+    openapi_allowed_base_urls: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",

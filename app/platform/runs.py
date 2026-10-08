@@ -199,6 +199,23 @@ class RunTimer:
         )
         return run_id
 
+    def awaiting_approval(self, trace: list[TraceStep]) -> int:
+        duration_ms = self._duration_ms()
+        run_id = run_store.record(
+            agent=self.agent,
+            status="waiting_approval",
+            duration_ms=duration_ms,
+            trace=trace,
+            request_id=self.request_id,
+            correlation_id=self.correlation_id,
+            agent_id=self.agent_id,
+            agent_version=self.agent_version,
+        )
+        log_event("agent_run", run_id=run_id, agent=self.agent,
+                  status="waiting_approval", duration_ms=duration_ms,
+                  agent_id=self.agent_id, agent_version=self.agent_version)
+        return run_id
+
     def error(self, exc: Exception) -> int:
         duration_ms = self._duration_ms()
         run_id = run_store.record(

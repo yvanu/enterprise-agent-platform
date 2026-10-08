@@ -7,6 +7,7 @@ from app.modules.agents import runtime as runtime_module
 from app.modules.agents import service as service_module
 from app.modules.agents.base import Base
 from app.modules.agents.service import agent_service
+from app.modules.tools import service as tool_module
 from app.platform import auth as auth_module
 from app.platform.runs import run_store
 
@@ -37,6 +38,7 @@ def test_custom_agent_lifecycle_and_run(monkeypatch, tmp_path):
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
     monkeypatch.setattr(service_module, "SessionLocal", session_factory)
+    monkeypatch.setattr(tool_module, "SessionLocal", session_factory)
     agent_service.seed_built_ins()
 
     monkeypatch.setattr(auth_module.settings, "auth_enabled", False)

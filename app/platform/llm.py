@@ -57,6 +57,36 @@ class OpenAICompatibleLLM:
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMResponseError("LLM 返回格式不符合 OpenAI Chat Completions 规范") from exc
 
+    def chat_with_tools(
+        self, messages: list[dict], tools: list[dict], *,
+        model: str | None = None, temperature: float = 0,
+    ) -> dict:
+        """Return the assistant message, including structured tool_calls."""
+        selected_model = model or self.settings.llm_model
+        if not selected_model:
+            raise LLMNotConfiguredError("请配置 LLM_MODEL")
+        with httpx.Client(
+            base_url=self.settings.llm_base_url.rstrip("/") + "/",
+            timeout=self.settings.llm_timeout_seconds,
+        ) as client:
+            response = client.post(
+                "chat/completions",
+                headers=self._headers(),
+                json={
+                    "model": selected_model, "messages": messages,
+                    "temperature": temperature, "tools": tools,
+                    "tool_choice": "auto",
+                },
+            )
+            response.raise_for_status()
+        try:
+            message = response.json()["choices"][0]["message"]
+            if not isinstance(message, dict):
+                raise TypeError("message must be object")
+            return message
+        except (KeyError, IndexError, TypeError) as exc:
+            raise LLMResponseError("LLM 工具调用格式无效") from exc
+
     def chat_json(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         content = self.chat(messages)
         match = _JSON_FENCE.match(content)

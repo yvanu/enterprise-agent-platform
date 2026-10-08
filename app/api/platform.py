@@ -174,8 +174,10 @@ def create_approval(
 ) -> ApprovalRecord:
     try:
         return approval_store.create(request, requester=identity.username)
-    except ToolPolicyError as exc:
+    except (ToolPolicyError, ValueError, KeyError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
 
 
 @router.post("/approvals/{approval_id}/decision", response_model=ApprovalRecord)
