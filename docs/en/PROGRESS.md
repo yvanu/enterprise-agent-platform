@@ -54,7 +54,7 @@ This page distinguishes **implemented code** from production deployment and real
 
 **Root cause:** `.github/workflows/ci.yml` runs tests/security checks only; `.github/workflows/docs.yml` builds documentation but contains **no deployment step**. A green GitHub workflow does not publish Cloudflare Workers/docs automatically. No Docker build, service restart, load testing, or production DB mutation was performed.
 
-**Unblock:** use a remote CI/Cloudflare builder, not this memory-constrained server; back up and stage the `0003/0004` migrations; verify new backend routes and newly published docs with lightweight HTTP probes; then perform a real approved MCP/REST integration smoke test. Until then, M2.5 is **implemented but not production-accepted**.
+**Unblock progress:** A GitHub Runner docs build-and-publish workflow and a gated, manually triggered API preflight/restart workflow have been prepared. The API release checks SHA/resources/schema before backing up SQLite and restarting only the single existing service. See [Safe deployment](/deployment). GitHub Secrets, manual approval and actual live verification are still required; M2.5 remains **implemented but not production-accepted**.
 
 ## Known limits and next milestone
 

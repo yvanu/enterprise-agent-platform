@@ -20,6 +20,7 @@ const zhTheme = {
         { text: '系统架构', link: '/ARCHITECTURE' },
         { text: '开发路线图', link: '/roadmap' },
         { text: '开发进度', link: '/PROGRESS' },
+        { text: '安全发布与验收', link: '/deployment' },
         { text: 'MCP 接入', link: '/mcp-integration' },
         { text: 'OpenAPI 接入', link: '/openapi-integration' }
       ]
@@ -78,6 +79,7 @@ const enTheme = {
         { text: 'Architecture', link: '/en/ARCHITECTURE' },
         { text: 'Development Roadmap', link: '/en/roadmap' },
         { text: 'Development Progress', link: '/en/PROGRESS' },
+        { text: 'Safe Deployment', link: '/deployment' },
         { text: 'MCP Integration', link: '/mcp-integration' },
         { text: 'OpenAPI Integration', link: '/openapi-integration' }
       ]

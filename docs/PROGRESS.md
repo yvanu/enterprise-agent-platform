@@ -66,7 +66,7 @@
 
 定位：仓库 `.github/workflows/ci.yml` 仅测试/安全检查，`.github/workflows/docs.yml` 仅执行 `npm run docs:build`，**两个工作流均无生产发布步骤**。GitHub CI 成功不代表 Cloudflare Worker/文档站已更新。未重启服务、未运行 Docker 构建、未进行压测，也没有修改生产数据。
 
-**解除验收阻塞建议：** 在 GitHub-hosted runner 或 Cloudflare 构建环境新增受控发布流程（不要在 1.6GB 宿主机上构建）；对 Agent 后端执行低流量的灰度/版本核对，备份并演练迁移 `20261008_0003`、`0004`，随后按上述 URL 复检；对文档站发布新构建产物后复检 4 个新增页面。实际生产验收通过前不得把 M2.5 标记为「已上线」。
+**解除验收阻塞进展：** 已添加 [安全发布与验收流程](/deployment)：文档由 GitHub Runner 构建后尝试发布至 Cloudflare，后端新增独立的**手动、默认只读预检**工作流，加入 Git SHA / 内存 / 负载 / SQLite 表预检和先备份再单服务重启的流程。执行生产发布仍取决于 GitHub Secrets、人工审批及真实环境验证。实际生产验收通过前不得把 M2.5 标记为「已上线」。
 
 ## 下一步：M3 异步运行时
 

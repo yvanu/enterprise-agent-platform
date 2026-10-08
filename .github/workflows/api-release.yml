@@ -1,0 +1,74 @@
+name: API release (guarded)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Read-only preflight, or restart after explicit confirmation
+        required: true
+        type: choice
+        options: [check, deploy]
+        default: check
+      confirmation:
+        description: Enter DEPLOY_EAP_PRODUCTION for deploy; leave empty for check
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eap-api-production
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check input and SSH credentials
+        env:
+          MODE: ${{ inputs.mode }}
+          CONFIRMATION: ${{ inputs.confirmation }}
+          DEPLOY_HOST: ${{ secrets.EAP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.EAP_DEPLOY_USER }}
+          DEPLOY_KEY: ${{ secrets.EAP_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EAP_DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          if [ "$MODE" = deploy ] && [ "$CONFIRMATION" != DEPLOY_EAP_PRODUCTION ]; then
+            echo "::error::Explicit deploy confirmation is required."
+            exit 1
+          fi
+          for field in DEPLOY_HOST DEPLOY_USER DEPLOY_KEY KNOWN_HOSTS; do
+            if [ -z "${!field}" ]; then
+              echo "::error::Missing GitHub Actions secret for $field."
+              exit 1
+            fi
+          done
+      - name: Configure pinned SSH host identity
+        env:
+          DEPLOY_KEY: ${{ secrets.EAP_DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.EAP_DEPLOY_SSH_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/eap_release_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Run low-load release gate on existing server
+        env:
+          DEPLOY_HOST: ${{ secrets.EAP_DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.EAP_DEPLOY_USER }}
+          MODE: ${{ inputs.mode }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          ssh -i ~/.ssh/eap_release_key -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes -o ConnectTimeout=8 \
+            "$DEPLOY_USER@$DEPLOY_HOST" \
+            "bash /root/gpt/enterprise-agent-platform/scripts/release_api.sh '$MODE' '$EXPECTED_SHA'"
+      - name: Verify deployed API (deploy only)
+        if: inputs.mode == 'deploy'
+        run: |
+          for endpoint in health/ready api/v1/mcp/servers api/v1/openapi/services; do
+            curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 12 \
+              -o /dev/null "https://agent.majhoon.site/$endpoint"
+          done

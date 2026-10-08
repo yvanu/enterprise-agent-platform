@@ -4,6 +4,7 @@
 * [Architecture](docs/ARCHITECTURE.md)
 * [Development Roadmap](docs/roadmap.md)
 * [Development Progress](docs/PROGRESS.md)
+* [Safe Deployment](docs/deployment.md)
 * [Agent Runtime](docs/agent-runtime.md)
 * [Tool & Approval Security](docs/security.md)
 * [MCP Integration](docs/mcp-integration.md)
